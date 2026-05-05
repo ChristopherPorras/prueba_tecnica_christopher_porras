@@ -1,0 +1,11 @@
+erDiagram
+  dim_date ||--o{ fact_sales_item : date_key
+  dim_store ||--o{ fact_sales_item : store_key
+  dim_product ||--o{ fact_sales_item : product_key
+  dim_vendor ||--o{ dim_product : vendor_key
+  dim_customer ||--o{ fact_sales_item : customer_key
+  dim_promotion ||--o{ fact_sales_item : promotion_key
+  dim_store ||--o{ fact_store_day : store_key
+  dim_date ||--o{ fact_store_day : date_key
+  dim_product ||--o{ fact_stock_gap : product_key
+  dim_store ||--o{ fact_stock_gap : store_key

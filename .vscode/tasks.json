@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Regenerar entregables",
+      "type": "shell",
+      "command": "python scripts/generate_all.py",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

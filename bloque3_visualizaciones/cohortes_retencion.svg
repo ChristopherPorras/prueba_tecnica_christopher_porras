@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="630" height="380" viewBox="0 0 630 380">
+<rect width="100%" height="100%" fill="#fbfaf7"/>
+<text x="20" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">Retencion de cohortes de lealtad</text>
+<text x="178" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M0</text>
+<text x="266" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M1</text>
+<text x="354" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M2</text>
+<text x="442" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M3</text>
+<text x="530" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M6</text>
+<text x="20" y="102" font-family="Arial" font-size="12" fill="#344054">2024-01</text>
+<rect x="150" y="78" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="101" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="78" width="83" height="33" rx="3" fill="rgb(175,188,182)"/>
+<text x="254" y="101" font-family="Arial" font-size="12" fill="#1f2933">63.4%</text>
+<rect x="326" y="78" width="83" height="33" rx="3" fill="rgb(171,185,178)"/>
+<text x="342" y="101" font-family="Arial" font-size="12" fill="#1f2933">67.4%</text>
+<rect x="414" y="78" width="83" height="33" rx="3" fill="rgb(173,186,180)"/>
+<text x="430" y="101" font-family="Arial" font-size="12" fill="#1f2933">65.8%</text>
+<rect x="502" y="78" width="83" height="33" rx="3" fill="rgb(164,178,171)"/>
+<text x="518" y="101" font-family="Arial" font-size="12" fill="#1f2933">75.0%</text>
+<text x="20" y="140" font-family="Arial" font-size="12" fill="#344054">2024-02</text>
+<rect x="150" y="116" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="139" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="116" width="83" height="33" rx="3" fill="rgb(170,184,177)"/>
+<text x="254" y="139" font-family="Arial" font-size="12" fill="#1f2933">68.7%</text>
+<rect x="326" y="116" width="83" height="33" rx="3" fill="rgb(171,184,178)"/>
+<text x="342" y="139" font-family="Arial" font-size="12" fill="#1f2933">67.9%</text>
+<rect x="414" y="116" width="83" height="33" rx="3" fill="rgb(167,181,174)"/>
+<text x="430" y="139" font-family="Arial" font-size="12" fill="#1f2933">71.6%</text>
+<rect x="502" y="116" width="83" height="33" rx="3" fill="rgb(168,182,175)"/>
+<text x="518" y="139" font-family="Arial" font-size="12" fill="#1f2933">70.9%</text>
+<text x="20" y="178" font-family="Arial" font-size="12" fill="#344054">2024-03</text>
+<rect x="150" y="154" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="177" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="154" width="83" height="33" rx="3" fill="rgb(172,186,179)"/>
+<text x="254" y="177" font-family="Arial" font-size="12" fill="#1f2933">66.7%</text>
+<rect x="326" y="154" width="83" height="33" rx="3" fill="rgb(170,183,177)"/>
+<text x="342" y="177" font-family="Arial" font-size="12" fill="#1f2933">68.9%</text>
+<rect x="414" y="154" width="83" height="33" rx="3" fill="rgb(161,175,168)"/>
+<text x="430" y="177" font-family="Arial" font-size="12" fill="#1f2933">77.9%</text>
+<rect x="502" y="154" width="83" height="33" rx="3" fill="rgb(164,178,171)"/>
+<text x="518" y="177" font-family="Arial" font-size="12" fill="#1f2933">74.8%</text>
+<text x="20" y="216" font-family="Arial" font-size="12" fill="#344054">2024-04</text>
+<rect x="150" y="192" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="215" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="192" width="83" height="33" rx="3" fill="rgb(161,175,168)"/>
+<text x="254" y="215" font-family="Arial" font-size="12" fill="#1f2933">77.9%</text>
+<rect x="326" y="192" width="83" height="33" rx="3" fill="rgb(173,186,180)"/>
+<text x="342" y="215" font-family="Arial" font-size="12" fill="#1f2933">66.2%</text>
+<rect x="414" y="192" width="83" height="33" rx="3" fill="rgb(163,177,170)"/>
+<text x="430" y="215" font-family="Arial" font-size="12" fill="#1f2933">76.5%</text>
+<rect x="502" y="192" width="83" height="33" rx="3" fill="rgb(157,171,164)"/>
+<text x="518" y="215" font-family="Arial" font-size="12" fill="#1f2933">82.4%</text>
+<text x="20" y="254" font-family="Arial" font-size="12" fill="#344054">2024-05</text>
+<rect x="150" y="230" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="253" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="230" width="83" height="33" rx="3" fill="rgb(168,182,175)"/>
+<text x="254" y="253" font-family="Arial" font-size="12" fill="#1f2933">71.0%</text>
+<rect x="326" y="230" width="83" height="33" rx="3" fill="rgb(162,176,169)"/>
+<text x="342" y="253" font-family="Arial" font-size="12" fill="#1f2933">77.4%</text>
+<rect x="414" y="230" width="83" height="33" rx="3" fill="rgb(165,179,172)"/>
+<text x="430" y="253" font-family="Arial" font-size="12" fill="#1f2933">74.2%</text>
+<rect x="502" y="230" width="83" height="33" rx="3" fill="rgb(168,182,175)"/>
+<text x="518" y="253" font-family="Arial" font-size="12" fill="#1f2933">71.0%</text>
+<text x="20" y="292" font-family="Arial" font-size="12" fill="#344054">2024-06</text>
+<rect x="150" y="268" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="291" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="268" width="83" height="33" rx="3" fill="rgb(161,175,168)"/>
+<text x="254" y="291" font-family="Arial" font-size="12" fill="#1f2933">78.6%</text>
+<rect x="326" y="268" width="83" height="33" rx="3" fill="rgb(182,194,188)"/>
+<text x="342" y="291" font-family="Arial" font-size="12" fill="#1f2933">57.1%</text>
+<rect x="414" y="268" width="83" height="33" rx="3" fill="rgb(175,188,181)"/>
+<text x="430" y="291" font-family="Arial" font-size="12" fill="#1f2933">64.3%</text>
+<rect x="502" y="268" width="83" height="33" rx="3" fill="rgb(154,168,161)"/>
+<text x="518" y="291" font-family="Arial" font-size="12" fill="#1f2933">85.7%</text>
+<text x="20" y="330" font-family="Arial" font-size="12" fill="#344054">2024-07</text>
+<rect x="150" y="306" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="329" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="306" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="254" y="329" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="326" y="306" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="342" y="329" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="414" y="306" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="430" y="329" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="502" y="306" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="518" y="329" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<text x="20" y="368" font-family="Arial" font-size="12" fill="#344054">2024-08</text>
+<rect x="150" y="344" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="166" y="367" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="238" y="344" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
+<text x="254" y="367" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>
+<rect x="326" y="344" width="83" height="33" rx="3" fill="rgb(189,201,195)"/>
+<text x="342" y="367" font-family="Arial" font-size="12" fill="#1f2933">50.0%</text>
+<rect x="414" y="344" width="83" height="33" rx="3" fill="rgb(189,201,195)"/>
+<text x="430" y="367" font-family="Arial" font-size="12" fill="#1f2933">50.0%</text>
+<rect x="502" y="344" width="83" height="33" rx="3" fill="rgb(238,246,243)"/>
+<text x="518" y="367" font-family="Arial" font-size="12" fill="#1f2933"></text>
+</svg>

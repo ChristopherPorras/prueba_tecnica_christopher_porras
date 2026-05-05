@@ -1,0 +1,253 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bloque 3 - Analisis Exploratorio y A/B Test</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; color:#1f2933; background:#fbfaf7; line-height:1.5; }
+    main { max-width: 1120px; margin: 0 auto; padding: 34px 24px 56px; }
+    h1 { font-size: 34px; margin: 0 0 6px; }
+    h2 { margin-top: 34px; border-top: 1px solid #d9d5cc; padding-top: 24px; }
+    .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+    .kpi { background:#fff; border:1px solid #e7e2da; border-radius:8px; padding:16px; }
+    .kpi b { display:block; font-size: 22px; }
+    img { max-width: 100%; border:1px solid #e7e2da; border-radius:8px; margin: 12px 0; }
+    table { width:100%; border-collapse:collapse; font-size: 13px; background:#fff; }
+    th, td { border-bottom:1px solid #e7e2da; padding:8px; text-align:left; }
+    th { background:#f2efe8; }
+    .callout { background:#fff; border-left:4px solid #D97941; padding:14px 16px; margin:14px 0; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Bloque 3 - Analisis Exploratorio + Experimentacion</h1>
+  <p>Datos sinteticos de retail multiformato, enero 2024 a junio 2025. GMV neto resta devoluciones; el A/B test usa solo ventas completadas.</p>
+
+  <div class="grid">
+    <div class="kpi"><span>GMV neto</span><b>$29,397,205</b></div>
+    <div class="kpi"><span>Tiendas</span><b>40</b></div>
+    <div class="kpi"><span>Vendors GMROI &lt; 1</span><b>120</b></div>
+    <div class="kpi"><span>GMV perdido estimado</span><b>$59,498,062</b></div>
+  </div>
+
+  <h2>Parte A - Analisis Exploratorio</h2>
+  <h3>1. Estacionalidad por formato</h3>
+  <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="GMV semanal por formato">
+  <p>El formato mas sensible es <b>EXPRESS</b>, con coeficiente de variacion 0.23. Los picos principales se concentran alrededor de semanas comerciales fuertes; las caidas grandes se explican por cierres de ciclo/promocion o semanas posteriores a picos.</p>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>week_start</th>
+      <th>format</th>
+      <th>net_gmv</th>
+      <th>wow_abs</th>
+      <th>wow_pct</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2024-12-02</td>
+      <td>HIPERMERCADO</td>
+      <td>316440.03</td>
+      <td>57997.25</td>
+      <td>22.44</td>
+    </tr>
+    <tr>
+      <td>2024-07-01</td>
+      <td>SUPERMERCADO</td>
+      <td>254202.85</td>
+      <td>48734.77</td>
+      <td>23.72</td>
+    </tr>
+    <tr>
+      <td>2025-05-05</td>
+      <td>SUPERMERCADO</td>
+      <td>252659.16</td>
+      <td>41832.01</td>
+      <td>19.84</td>
+    </tr>
+  </tbody>
+</table>
+  <p><b>Caidas mas significativas:</b></p>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>week_start</th>
+      <th>format</th>
+      <th>net_gmv</th>
+      <th>wow_abs</th>
+      <th>wow_pct</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2024-12-30</td>
+      <td>SUPERMERCADO</td>
+      <td>239458.72</td>
+      <td>-65412.65</td>
+      <td>-21.46</td>
+    </tr>
+    <tr>
+      <td>2024-12-30</td>
+      <td>HIPERMERCADO</td>
+      <td>238755.95</td>
+      <td>-60147.70</td>
+      <td>-20.12</td>
+    </tr>
+    <tr>
+      <td>2024-07-29</td>
+      <td>HIPERMERCADO</td>
+      <td>223186.14</td>
+      <td>-43017.31</td>
+      <td>-16.16</td>
+    </tr>
+  </tbody>
+</table>
+
+  <h3>2. Pareto de categorias por formato</h3>
+  <img src="bloque3_visualizaciones/pareto_categorias_gmv.svg" alt="Pareto de categorias">
+  <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% del GMV. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>format</th>
+      <th>category</th>
+      <th>share</th>
+      <th>cum_share</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DESCUENTO</td>
+      <td>Electrónica</td>
+      <td>52.4</td>
+      <td>52.4</td>
+    </tr>
+    <tr>
+      <td>DESCUENTO</td>
+      <td>Hogar</td>
+      <td>23.2</td>
+      <td>75.6</td>
+    </tr>
+    <tr>
+      <td>DESCUENTO</td>
+      <td>Ropa</td>
+      <td>8.0</td>
+      <td>83.6</td>
+    </tr>
+    <tr>
+      <td>EXPRESS</td>
+      <td>Electrónica</td>
+      <td>52.1</td>
+      <td>52.1</td>
+    </tr>
+    <tr>
+      <td>EXPRESS</td>
+      <td>Hogar</td>
+      <td>24.0</td>
+      <td>76.0</td>
+    </tr>
+    <tr>
+      <td>EXPRESS</td>
+      <td>Ropa</td>
+      <td>7.6</td>
+      <td>83.6</td>
+    </tr>
+    <tr>
+      <td>HIPERMERCADO</td>
+      <td>Electrónica</td>
+      <td>52.7</td>
+      <td>52.7</td>
+    </tr>
+    <tr>
+      <td>HIPERMERCADO</td>
+      <td>Hogar</td>
+      <td>23.2</td>
+      <td>75.9</td>
+    </tr>
+    <tr>
+      <td>HIPERMERCADO</td>
+      <td>Ropa</td>
+      <td>7.9</td>
+      <td>83.8</td>
+    </tr>
+    <tr>
+      <td>SUPERMERCADO</td>
+      <td>Electrónica</td>
+      <td>52.5</td>
+      <td>52.5</td>
+    </tr>
+    <tr>
+      <td>SUPERMERCADO</td>
+      <td>Hogar</td>
+      <td>23.4</td>
+      <td>75.9</td>
+    </tr>
+    <tr>
+      <td>SUPERMERCADO</td>
+      <td>Ropa</td>
+      <td>7.9</td>
+      <td>83.8</td>
+    </tr>
+  </tbody>
+</table>
+
+  <h3>3. Cohortes de lealtad</h3>
+  <img src="bloque3_visualizaciones/cohortes_retencion.svg" alt="Heatmap de cohortes">
+  <p>Las cohortes recientes de abril-junio 2024 retienen mejor en M1 (75.8%) que las cohortes enero-marzo (66.3%), aunque las cohortes recientes son pequenas. La mayor caida promedio ocurre de M0 a M1; despues hay recuperaciones, lo que apunta a compras recurrentes no necesariamente mensuales.</p>
+
+  <h3>4. Quiebres de stock e impacto</h3>
+  <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="GMV perdido por quiebres">
+  <p>Se detectaron 315,383 gaps de 3+ dias. No todos son quiebres reales, pero priorizados por GMV perdido apuntan a Electronica como el mayor riesgo: $31,254,439. Proveedores con mayor impacto estimado:</p>
+  <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>vendor_id</th>
+      <th>vendor_name</th>
+      <th>lost_gmv</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>VND_020</td>
+      <td>Proveedor T</td>
+      <td>4.837944e+06</td>
+    </tr>
+    <tr>
+      <td>VND_026</td>
+      <td>Proveedor Z</td>
+      <td>4.439000e+06</td>
+    </tr>
+    <tr>
+      <td>VND_010</td>
+      <td>Proveedor J</td>
+      <td>4.279549e+06</td>
+    </tr>
+    <tr>
+      <td>VND_003</td>
+      <td>Proveedor C</td>
+      <td>4.244622e+06</td>
+    </tr>
+    <tr>
+      <td>VND_027</td>
+      <td>Proveedor Z1</td>
+      <td>4.142781e+06</td>
+    </tr>
+  </tbody>
+</table>
+
+  <h3>5. Hallazgo libre</h3>
+  <div class="callout">Electronica representa 52.6% del GMV total aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
+
+  <h2>Parte B - Interpretacion de A/B Test</h2>
+  <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="A/B test GMV">
+  <p>Validacion: hay dos tiendas asignadas a ambos grupos (TIENDA_008, TIENDA_037), excluidas del test primario. Los grupos limpios no son perfectamente comparables: CONTROL tiene tiendas mas grandes y mas hiper/supermercados.</p>
+  <p>Resultado principal de GMV semanal promedio por tienda: diferencia TREATMENT - CONTROL = <b>$-2,794.97</b>, lift -17.0%, p-value 0.241, IC95% [$-7,551.11, $1,961.16]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
+  <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = $1,751.62, p-value 0.004. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
+  <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria un segundo test estratificado por formato y tamano, con costo de implementacion medido. Si el p-value fuera 0.08 y el lift cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
+</main>
+</body>
+</html>
