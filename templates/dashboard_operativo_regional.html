@@ -23,16 +23,20 @@
     * { box-sizing:border-box; }
     body { margin:0; font-family:Inter, Segoe UI, Arial, sans-serif; color:var(--ink); background:var(--paper); }
     button, input, select { font:inherit; }
-    .app-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(14px); }
-    .header-inner { max-width:1440px; margin:0 auto; padding:18px 24px 16px; }
-    .title-row { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start; }
-    h1 { margin:0; font-size:25px; line-height:1.15; letter-spacing:0; }
-    .subtitle { margin:7px 0 0; color:var(--muted); font-size:13px; max-width:780px; line-height:1.45; }
+    .app-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(14px); box-shadow:0 10px 28px rgba(31,41,51,.05); }
+    .header-inner { max-width:1440px; margin:0 auto; padding:10px 24px 9px; }
+    .title-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px; align-items:center; }
+    h1 { margin:0; font-size:21px; line-height:1.15; letter-spacing:0; }
+    .subtitle { margin:3px 0 0; color:var(--muted); font-size:12px; max-width:760px; line-height:1.35; }
     .actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
     .btn { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:8px; min-height:34px; padding:7px 11px; cursor:pointer; font-size:12px; font-weight:700; }
     .btn.primary { border-color:var(--teal); background:var(--teal); color:#fff; }
     .btn:hover { transform:translateY(-1px); box-shadow:0 8px 20px rgba(31,41,51,.10); }
-    .filters { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:10px; align-items:end; margin-top:16px; }
+    .period-pill { display:inline-flex; align-items:center; min-height:34px; border:1px solid var(--line); border-radius:999px; padding:7px 11px; color:var(--ink); background:var(--panel-soft); font-size:12px; font-weight:800; white-space:nowrap; }
+    .control-panel { max-height:0; overflow:hidden; opacity:0; margin-top:0; border-top:0 solid transparent; transition:max-height .28s ease, opacity .18s ease, margin-top .18s ease, padding-top .18s ease; }
+    .app-header.filters-open .control-panel { max-height:360px; overflow:auto; opacity:1; margin-top:10px; padding-top:12px; border-top:1px solid #edf0f2; }
+    .filter-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-bottom:10px; }
+    .filters { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:10px; align-items:end; }
     .filters > div { min-width:0; }
     .filter-2 { grid-column:span 2; }
     .filter-3 { grid-column:span 3; }
@@ -40,7 +44,7 @@
     label { display:block; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
     select, input { width:100%; min-height:36px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:8px 10px; outline:none; }
     select:focus, input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(23,107,135,.13); }
-    .filter-status { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; color:var(--muted); font-size:12px; }
+    .filter-status { display:flex; align-items:center; justify-content:flex-start; gap:12px; margin-top:7px; color:var(--muted); font-size:12px; min-height:24px; }
     .chips { display:flex; gap:8px; flex-wrap:wrap; }
     .chip { border:1px solid var(--line); background:var(--panel-soft); color:var(--ink); border-radius:999px; padding:5px 9px; font-size:12px; }
     main { max-width:1440px; margin:0 auto; padding:22px 24px 48px; }
@@ -119,6 +123,7 @@
     @media (max-width:1180px) {
       .filters { grid-template-columns:repeat(4,1fr); }
       .filters > div { grid-column:auto; }
+      .app-header.filters-open .control-panel { max-height:520px; }
       .dashboard-grid { grid-template-columns:1fr; }
       .kpis, .insight-strip { grid-template-columns:repeat(2,1fr); }
     }
@@ -126,6 +131,7 @@
       .app-header { position:static; }
       .header-inner, main { padding-left:14px; padding-right:14px; }
       .title-row, .filters, .kpis, .insight-strip, .table-tools, .stock-controls { grid-template-columns:1fr; }
+      .actions, .filter-actions { justify-content:flex-start; }
       .filters > div { grid-column:auto; }
       h1 { font-size:22px; }
       table { min-width:680px; }
@@ -141,24 +147,29 @@
         <p class="subtitle">Consola interactiva para revisar ventas netas, productividad por tienda, cohortes de lealtad y posibles quiebres de venta usando los filtros activos.</p>
       </div>
       <div class="actions">
-        <button class="btn" id="last-90" type="button">Últimos 90 días</button>
-        <button class="btn" id="full-period" type="button">Todo el período</button>
-        <button class="btn primary" id="reset" type="button">Restablecer</button>
+        <span class="period-pill" id="period-label">Periodo completo</span>
+        <button class="btn primary" id="filters-toggle" type="button" aria-controls="filter-panel" aria-expanded="false">Mostrar filtros</button>
       </div>
     </div>
-    <div class="filters">
-      <div class="filter-2"><label>País</label><select id="country"><option value="">Todos</option></select></div>
-      <div class="filter-2"><label>Formato</label><select id="format"><option value="">Todos</option></select></div>
-      <div class="filter-2"><label>Región</label><select id="region"><option value="">Todas</option></select></div>
-      <div class="filter-3"><label>Fecha inicial</label><input id="start" type="date" value="__DEFAULT_START__"></div>
-      <div class="filter-3"><label>Fecha final</label><input id="end" type="date" value="__DEFAULT_END__"></div>
-      <div class="filter-4"><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
-      <div class="filter-4"><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Venta por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option><option value="tx">Transacciones</option></select></div>
-      <div class="filter-4"><label>Buscar tienda</label><input id="store-search" type="search" placeholder="Nombre o código"></div>
-    </div>
     <div class="filter-status">
-      <div id="period-label">Periodo completo</div>
       <div class="chips" id="active-chips"></div>
+    </div>
+    <div class="control-panel" id="filter-panel">
+      <div class="filter-actions">
+        <button class="btn" id="last-90" type="button">Últimos 90 días</button>
+        <button class="btn" id="full-period" type="button">Todo el período</button>
+        <button class="btn" id="reset" type="button">Restablecer</button>
+      </div>
+      <div class="filters">
+        <div class="filter-2"><label>País</label><select id="country"><option value="">Todos</option></select></div>
+        <div class="filter-2"><label>Formato</label><select id="format"><option value="">Todos</option></select></div>
+        <div class="filter-2"><label>Región</label><select id="region"><option value="">Todas</option></select></div>
+        <div class="filter-3"><label>Fecha inicial</label><input id="start" type="date" value="__DEFAULT_START__"></div>
+        <div class="filter-3"><label>Fecha final</label><input id="end" type="date" value="__DEFAULT_END__"></div>
+        <div class="filter-4"><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
+        <div class="filter-4"><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Venta por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option><option value="tx">Transacciones</option></select></div>
+        <div class="filter-4"><label>Buscar tienda</label><input id="store-search" type="search" placeholder="Nombre o código"></div>
+      </div>
     </div>
   </div>
 </header>
@@ -738,6 +749,12 @@ function setMetric(metric) {
   update();
 }
 
+function setFiltersOpen(open) {
+  document.querySelector('.app-header').classList.toggle('filters-open', open);
+  byId('filters-toggle').setAttribute('aria-expanded', String(open));
+  byId('filters-toggle').textContent = open ? 'Ocultar filtros' : 'Mostrar filtros';
+}
+
 function update() {
   const rows = filtered();
   updateKpis(rows);
@@ -759,6 +776,7 @@ addOptions('stock-category', uniqueFromStock('category'));
 byId('metric-gmv').addEventListener('click', () => setMetric('gmv'));
 byId('metric-tx').addEventListener('click', () => setMetric('tx'));
 byId('export-ranking').addEventListener('click', exportRanking);
+byId('filters-toggle').addEventListener('click', () => setFiltersOpen(!document.querySelector('.app-header').classList.contains('filters-open')));
 byId('full-period').addEventListener('click', () => { byId('start').value = DEFAULT_START; byId('end').value = DEFAULT_END; update(); });
 byId('last-90').addEventListener('click', () => {
   const end = new Date(DEFAULT_END + 'T00:00:00');
