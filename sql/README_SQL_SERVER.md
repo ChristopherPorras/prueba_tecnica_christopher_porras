@@ -1,16 +1,49 @@
 # SQL Server desde VS Code
 
-La prueba permite SQL estandar o BigQuery SQL; `bloque1_queries.sql` esta escrito en BigQuery Standard SQL por legibilidad y funciones analiticas.
+Esta carpeta permite demostrar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
 
-Si durante la entrevista quieren verlo en SQL Server:
+## Requisito
 
-1. Conecta la extension MSSQL de VS Code a un servidor SQL Server disponible.
-2. Crea tablas equivalentes a los CSV.
-3. Importa los CSV desde el servidor o usa el asistente de importacion disponible en tu entorno.
-4. Traduce funciones puntuales:
-   - `DATE_TRUNC(..., MONTH)` -> `DATEFROMPARTS(YEAR(fecha), MONTH(fecha), 1)`
-   - `DATE_DIFF(a,b,MONTH)` -> `DATEDIFF(MONTH,b,a)`
-   - `SAFE_DIVIDE(x,y)` -> `x / NULLIF(y,0)`
-   - `LOGICAL_OR` -> `MAX(CASE WHEN condicion THEN 1 ELSE 0 END)`
+La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL Server existente: servidor de la empresa, Azure SQL, una maquina remota o un SQL Server ya instalado por TI. No necesitas instalar SQL Server localmente en tu computadora de trabajo.
 
-No se incluye dependencia a MSSQL local porque la computadora de trabajo no permite instalarlo.
+## Orden recomendado
+
+1. Abre VS Code en la carpeta del repo.
+2. Instala o abre la extension **SQL Server (MSSQL)**.
+3. Crea una conexion a tu servidor desde el panel de la extension.
+4. Ejecuta los archivos en este orden:
+
+| Orden | Archivo | Que hace |
+| --- | --- | --- |
+| 1 | `00_crear_tablas_sql_server.sql` | Crea la base `RetailPruebaTecnica`, tablas e indices. |
+| 2 | `01_cargar_csv_sql_server.sql` | Carga los CSV de `data/raw` usando staging tables. |
+| 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
+| 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
+| 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
+
+## Punto importante sobre carga de CSV
+
+`BULK INSERT` lee archivos desde la maquina donde corre SQL Server, no desde VS Code. Si el servidor no puede leer tu carpeta local:
+
+- usa el asistente **Import Flat File** de la extension MSSQL si esta disponible en tu entorno;
+- o copia los CSV a una ruta compartida/accesible para el servidor;
+- o pide una base temporal y sube los CSV con la herramienta corporativa permitida.
+
+## Como ejecutar una query en VS Code
+
+1. Abre un archivo `.sql`.
+2. Selecciona la conexion en la parte superior del editor.
+3. Selecciona la base `RetailPruebaTecnica`.
+4. Ejecuta todo el archivo o selecciona una consulta especifica.
+5. Revisa los resultados en el panel inferior.
+
+## Equivalencia con BigQuery
+
+El archivo `bloque1_queries.sql` conserva la version BigQuery Standard SQL pedida por la prueba. El archivo `03_bloque1_queries_sql_server.sql` es la version ejecutable en SQL Server.
+
+Traducciones principales:
+
+- `DATE_TRUNC(..., MONTH)` -> `DATEFROMPARTS(YEAR(fecha), MONTH(fecha), 1)`
+- `DATE_DIFF(a, b, MONTH)` -> `DATEDIFF(MONTH, b, a)`
+- `SAFE_DIVIDE(x, y)` -> `x / NULLIF(y, 0)`
+- `LOGICAL_OR` -> `MAX(CASE WHEN condicion THEN 1 ELSE 0 END)`

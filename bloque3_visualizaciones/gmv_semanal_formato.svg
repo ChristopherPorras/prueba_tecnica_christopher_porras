@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="460" viewBox="0 0 980 460">
 <rect width="100%" height="100%" fill="#fbfaf7"/>
-<text x="86" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">GMV semanal por formato</text>
+<text x="86" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">Ventas netas semanales por formato</text>
 <line x1="86" y1="58.0" x2="952" y2="58.0" stroke="#e5e2dc"/>
 <text x="22" y="62.0" font-family="Arial" font-size="12" fill="#667085">$354,320</text>
 <line x1="86" y1="144.0" x2="952" y2="144.0" stroke="#e5e2dc"/>

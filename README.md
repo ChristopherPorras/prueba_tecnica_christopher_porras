@@ -21,7 +21,7 @@ pip install -r requirements.txt
 python scripts/generate_all.py
 ```
 
-En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para SQL Server desde VS Code, usa la extension MSSQL solo si tienes conexion a un servidor; este repo no requiere instalar MSSQL local.
+En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para mostrar la parte de base de datos desde VS Code, abre `sql/README_SQL_SERVER.md` y ejecuta los scripts numerados de la carpeta `sql/` con la extension MSSQL.
 
 ## Datos
 
@@ -42,6 +42,11 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
+- `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
+- `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
+- `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
+- `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
+- `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
 
 ## Uso de IA documentado
 

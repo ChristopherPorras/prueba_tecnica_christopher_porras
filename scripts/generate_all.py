@@ -733,18 +733,18 @@ def svg_cohort_heatmap(retention: pd.DataFrame, path: Path) -> None:
 
 def create_visuals(weekly: pd.DataFrame, pareto: pd.DataFrame, retention: pd.DataFrame, gaps: pd.DataFrame, ab: dict[str, object]) -> None:
     VIZ.mkdir(exist_ok=True)
-    svg_line_chart(weekly, VIZ / "gmv_semanal_formato.svg", "GMV semanal por formato", "week_start", "net_gmv", "format")
+    svg_line_chart(weekly, VIZ / "gmv_semanal_formato.svg", "Ventas netas semanales por formato", "week_start", "net_gmv", "format")
     top_categories = (
         pareto.groupby("category")["net_line_gmv"].sum().sort_values(ascending=False).reset_index().head(8)
     )
-    svg_bar_chart(top_categories, VIZ / "pareto_categorias_gmv.svg", "GMV por categoria", "category", "net_line_gmv", "#3E8E7E")
+    svg_bar_chart(top_categories, VIZ / "pareto_categorias_gmv.svg", "Ventas netas por categoria", "category", "net_line_gmv", "#3E8E7E")
     svg_cohort_heatmap(retention, VIZ / "cohortes_retencion.svg")
     category_loss = gaps.groupby("category")["estimated_lost_gmv"].sum().sort_values(ascending=False).reset_index()
-    svg_bar_chart(category_loss, VIZ / "stockouts_gmv_perdido_categoria.svg", "GMV estimado perdido por quiebres", "category", "estimated_lost_gmv", "#C04B37")
+    svg_bar_chart(category_loss, VIZ / "stockouts_gmv_perdido_categoria.svg", "Ventas estimadas perdidas por quiebres", "category", "estimated_lost_gmv", "#C04B37")
 
     ab_summary = ab["test_summary"].reset_index()
     ab_summary = ab_summary.rename(columns={"avg_weekly_gmv": "value"})
-    svg_bar_chart(ab_summary, VIZ / "ab_test_gmv_promedio.svg", "A/B test: GMV semanal promedio por tienda", "variant", "value", "#D97941")
+    svg_bar_chart(ab_summary, VIZ / "ab_test_gmv_promedio.svg", "Prueba A/B: ventas semanales promedio por tienda", "variant", "value", "#D97941")
 
 
 def write_sql_queries() -> None:
@@ -1181,15 +1181,15 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
 
 def write_kpi_framework() -> None:
     rows = [
-        ["GMV/m2", "GMV neto por metro cuadrado", "GMV neto / size_sqm", "Semanal", "fact_store_day + dim_store", ">= p50 del formato", "size_sqm nulo/cero, GMV negativo sin returns"],
-        ["Transacciones/m2", "Cantidad de tickets por area", "transactions / size_sqm", "Semanal", "fact_store_day", ">= p50 del formato", "Caida >30% vs media movil sin alerta de cierre"],
-        ["Ticket promedio neto", "Venta neta por transaccion", "GMV neto / transacciones", "Diario", "fact_transaction", "+3% YoY comparable", "Total <=0 o transacciones duplicadas"],
+        ["Ventas netas por metro cuadrado", "Ventas netas por cada metro cuadrado de tienda", "Ventas netas / metros cuadrados de tienda", "Semanal", "fact_store_day + dim_store", ">= p50 del formato", "Metros cuadrados nulos/cero, ventas negativas sin devoluciones"],
+        ["Transacciones por metro cuadrado", "Cantidad de tickets por cada metro cuadrado", "Transacciones / metros cuadrados de tienda", "Semanal", "fact_store_day", ">= p50 del formato", "Caida >30% vs media movil sin alerta de cierre"],
+        ["Ticket promedio neto", "Venta neta por transaccion", "Ventas netas / transacciones", "Diario", "fact_transaction", "+3% YoY comparable", "Total <=0 o transacciones duplicadas"],
         ["Conversion de lealtad", "Participacion de tickets identificados", "tx con loyalty_card / tx totales", "Semanal", "fact_transaction", "45% en 6 meses", "customer_id nulo con loyalty_card TRUE"],
         ["Retencion M1", "Clientes de cohorte que vuelven al mes 1", "clientes activos M1 / tamano cohorte", "Mensual", "fact_cohort_month", ">=70%", "Cohorte sin customer_hash o month_n negativo"],
-        ["Indice de quiebre", "GMV perdido estimado por falta de venta", "estimated_lost_gmv / GMV neto", "Diario", "fact_stock_gap + fact_store_day", "<2% del GMV", "Gap en producto sin ventas historicas"],
-        ["GMROI", "Retorno de margen sobre costo", "(GMV - costo) / costo", "Mensual", "fact_sales_item + dim_product", ">1.5 por vendor-categoria", "Costo nulo/cero o vendor inexistente"],
+        ["Indice de quiebre", "Ventas estimadas perdidas por falta de venta", "Ventas estimadas perdidas / ventas netas", "Diario", "fact_stock_gap + fact_store_day", "<2% de ventas netas", "Gap en producto sin ventas historicas"],
+        ["Retorno de margen bruto sobre inversion", "Retorno de margen sobre costo", "(Ventas - costo) / costo", "Mensual", "fact_sales_item + dim_product", ">1.5 por proveedor-categoria", "Costo nulo/cero o proveedor inexistente"],
         ["Fill-rate proxy", "Leading indicator de abastecimiento", "1 - items activos con gap 3+ dias / items activos", "Diario", "fact_stock_gap", ">=97%", "Item marcado activo sin ventas ultimos 180 dias"],
-        ["Productivity Health Score", "KPI compuesto de productividad", "0.4 GMV/m2 + 0.25 tx/m2 + 0.2 ticket + 0.15 fill-rate normalizados", "Semanal", "Marts certificados", ">=75/100", "Alguna metrica base faltante o fuera de rango"],
+        ["Puntaje de salud de productividad", "KPI compuesto de productividad", "0.4 ventas netas por metro cuadrado + 0.25 transacciones por metro cuadrado + 0.2 ticket + 0.15 fill-rate normalizados", "Semanal", "Marts certificados", ">=75/100", "Alguna metrica base faltante o fuera de rango"],
     ]
     text = [
         "# Bloque 4 - Framework de KPIs para productividad de tiendas",
@@ -1209,7 +1209,7 @@ def write_kpi_framework() -> None:
         "",
         "## North Star Metric",
         "",
-        "**Productivity Health Score** es la North Star Metric del programa. Combina resultado financiero (GMV/m2), actividad operativa (transacciones/m2), experiencia/comportamiento de cliente (ticket y retencion via componentes) y disponibilidad (fill-rate proxy). Es mejor que usar solo GMV porque evita premiar tiendas grandes que venden mucho pero son ineficientes o tienen problemas de stock.",
+        "**Puntaje de salud de productividad** es la North Star Metric del programa. Combina resultado financiero (ventas netas por metro cuadrado), actividad operativa (transacciones por metro cuadrado), experiencia/comportamiento de cliente (ticket y retencion via componentes) y disponibilidad (fill-rate proxy). Es mejor que usar solo ventas porque evita premiar tiendas grandes que venden mucho pero son ineficientes o tienen problemas de stock.",
         "",
         "## Leading indicator",
         "",
@@ -1270,18 +1270,18 @@ def write_analysis_html(
 <body>
 <main>
   <h1>Bloque 3 - Analisis Exploratorio + Experimentacion</h1>
-  <p>Datos sinteticos de retail multiformato, enero 2024 a junio 2025. GMV neto resta devoluciones; el A/B test usa solo ventas completadas.</p>
+  <p>Datos sinteticos de retail multiformato, enero 2024 a junio 2025. Las ventas netas restan devoluciones; la prueba A/B usa solo ventas completadas.</p>
 
   <div class="grid">
-    <div class="kpi"><span>GMV neto</span><b>{money(comp_store['current'].sum() + comp_store['previous'].sum())}</b></div>
+    <div class="kpi"><span>Ventas netas</span><b>{money(comp_store['current'].sum() + comp_store['previous'].sum())}</b></div>
     <div class="kpi"><span>Tiendas</span><b>{prod['store_id'].nunique()}</b></div>
-    <div class="kpi"><span>Vendors GMROI &lt; 1</span><b>{gmroi_low}</b></div>
-    <div class="kpi"><span>GMV perdido estimado</span><b>{money(category_loss.sum())}</b></div>
+    <div class="kpi"><span>Proveedores-categoria con retorno bajo</span><b>{gmroi_low}</b></div>
+    <div class="kpi"><span>Ventas estimadas perdidas</span><b>{money(category_loss.sum())}</b></div>
   </div>
 
   <h2>Parte A - Analisis Exploratorio</h2>
   <h3>1. Estacionalidad por formato</h3>
-  <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="GMV semanal por formato">
+  <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="Ventas netas semanales por formato">
   <p>El formato mas sensible es <b>{cv.iloc[0]['format']}</b>, con coeficiente de variacion {cv.iloc[0]['cv']:.2f}. Los picos principales se concentran alrededor de semanas comerciales fuertes; las caidas grandes se explican por cierres de ciclo/promocion o semanas posteriores a picos.</p>
   {top_peaks[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).to_html(index=False)}
   <p><b>Caidas mas significativas:</b></p>
@@ -1289,7 +1289,7 @@ def write_analysis_html(
 
   <h3>2. Pareto de categorias por formato</h3>
   <img src="bloque3_visualizaciones/pareto_categorias_gmv.svg" alt="Pareto de categorias">
-  <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% del GMV. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
+  <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% de las ventas netas. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
   {pareto.sort_values(['format','cum_share']).groupby('format').head(3)[['format','category','share','cum_share']].assign(share=lambda d: (d['share']*100).round(1), cum_share=lambda d: (d['cum_share']*100).round(1)).to_html(index=False)}
 
   <h3>3. Cohortes de lealtad</h3>
@@ -1297,17 +1297,17 @@ def write_analysis_html(
   <p>Las cohortes recientes de abril-junio 2024 retienen mejor en M1 ({recent:.1f}%) que las cohortes enero-marzo ({old:.1f}%), aunque las cohortes recientes son pequenas. La mayor caida promedio ocurre de M0 a M1; despues hay recuperaciones, lo que apunta a compras recurrentes no necesariamente mensuales.</p>
 
   <h3>4. Quiebres de stock e impacto</h3>
-  <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="GMV perdido por quiebres">
-  <p>Se detectaron {len(gaps):,} gaps de 3+ dias. No todos son quiebres reales, pero priorizados por GMV perdido apuntan a Electronica como el mayor riesgo: {money(category_loss.iloc[0])}. Proveedores con mayor impacto estimado:</p>
+  <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="Ventas estimadas perdidas por quiebres">
+  <p>Se detectaron {len(gaps):,} gaps de 3+ dias. No todos son quiebres reales, pero priorizados por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: {money(category_loss.iloc[0])}. Proveedores con mayor impacto estimado:</p>
   {vendor_loss.reset_index().rename(columns={'estimated_lost_gmv':'lost_gmv'}).to_html(index=False)}
 
   <h3>5. Hallazgo libre</h3>
-  <div class="callout">Electronica representa {electronics_share:.1f}% del GMV total aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
+  <div class="callout">Electronica representa {electronics_share:.1f}% de las ventas totales aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
 
   <h2>Parte B - Interpretacion de A/B Test</h2>
-  <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="A/B test GMV">
+  <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="Prueba A/B de ventas promedio">
   <p>Validacion: hay dos tiendas asignadas a ambos grupos ({', '.join(ab['ambiguous'])}), excluidas del test primario. Los grupos limpios no son perfectamente comparables: CONTROL tiene tiendas mas grandes y mas hiper/supermercados.</p>
-  <p>Resultado principal de GMV semanal promedio por tienda: diferencia TREATMENT - CONTROL = <b>{money2(ttest['diff'])}</b>, lift {ttest['lift_pct']:.1f}%, p-value {ttest['p_value']:.3f}, IC95% [{money2(ttest['ci_low'])}, {money2(ttest['ci_high'])}]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
+  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>{money2(ttest['diff'])}</b>, lift {ttest['lift_pct']:.1f}%, p-value {ttest['p_value']:.3f}, IC95% [{money2(ttest['ci_low'])}, {money2(ttest['ci_high'])}]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
   <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = {money2(change['diff'])}, p-value {change['p_value']:.3f}. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
   <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria un segundo test estratificado por formato y tamano, con costo de implementacion medido. Si el p-value fuera 0.08 y el lift cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
 </main>
@@ -1352,11 +1352,11 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
     default_start = (tx["transaction_date"].max() - pd.Timedelta(days=6)).strftime("%Y-%m-%d")
     default_end = tx["transaction_date"].max().strftime("%Y-%m-%d")
     html = f"""<!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Retail Regional Operations Dashboard</title>
+  <title>Dashboard operativo regional de retail</title>
   <style>
     :root {{ --ink:#1f2933; --muted:#667085; --line:#ded8cf; --paper:#fbfaf7; --panel:#ffffff; --red:#C04B37; --green:#3E8E7E; --orange:#D97941; --teal:#176B87; }}
     body {{ margin:0; font-family: Arial, sans-serif; color:var(--ink); background:var(--paper); }}
@@ -1380,45 +1380,211 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
     th {{ color:var(--muted); font-weight:700; background:#f5f1ea; }}
     tr.low td {{ background:#fff0ed; }}
     .heat td {{ text-align:center; }}
+    details.logic {{ margin-top:12px; border-top:1px solid #eee8df; padding-top:10px; }}
+    details.logic summary {{ cursor:pointer; color:var(--teal); font-weight:700; font-size:13px; }}
+    .logic p {{ color:var(--muted); font-size:13px; margin:8px 0; }}
+    pre {{ white-space:pre-wrap; background:#17212b; color:#f4f7f9; padding:12px; border-radius:6px; overflow:auto; font-size:11px; line-height:1.45; }}
     @media (max-width: 1000px) {{ .filters, .kpis, .layout {{ grid-template-columns:1fr 1fr; }} }}
     @media (max-width: 700px) {{ .filters, .kpis, .layout {{ grid-template-columns:1fr; }} header {{ position:static; }} }}
   </style>
 </head>
 <body>
 <header>
-  <h1>Retail Regional Operations Dashboard</h1>
+  <h1>Dashboard operativo regional de retail</h1>
   <div class="filters">
-    <div><label>Country</label><select id="country"><option value="">All</option></select></div>
-    <div><label>Format</label><select id="format"><option value="">All</option></select></div>
-    <div><label>Region</label><select id="region"><option value="">All</option></select></div>
-    <div><label>Start date</label><input id="start" type="date" value="{default_start}"></div>
-    <div><label>End date</label><input id="end" type="date" value="{default_end}"></div>
-    <div><label>Alert</label><select id="alert"><option value="">All stores</option><option value="low">Below p25 GMV/m2</option></select></div>
-    <div><label>Sort</label><select id="sort"><option value="gmv_sqm">GMV/m2</option><option value="gmv">GMV</option><option value="ticket">Avg ticket</option></select></div>
+    <div><label>Pais</label><select id="country"><option value="">Todos</option></select></div>
+    <div><label>Formato</label><select id="format"><option value="">Todos</option></select></div>
+    <div><label>Region</label><select id="region"><option value="">Todas</option></select></div>
+    <div><label>Fecha inicial</label><input id="start" type="date" value="{default_start}"></div>
+    <div><label>Fecha final</label><input id="end" type="date" value="{default_end}"></div>
+    <div><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
+    <div><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Ventas netas por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option></select></div>
   </div>
 </header>
 <main>
   <div class="kpis">
-    <div class="kpi"><span>Net GMV</span><strong id="kpi-gmv">$0</strong><div id="delta-gmv" class="delta"></div></div>
-    <div class="kpi"><span>Transactions</span><strong id="kpi-tx">0</strong><div id="delta-tx" class="delta"></div></div>
-    <div class="kpi"><span>Avg ticket</span><strong id="kpi-ticket">$0</strong><div id="delta-ticket" class="delta"></div></div>
-    <div class="kpi"><span>GMV/m2</span><strong id="kpi-sqm">$0</strong><div id="delta-sqm" class="delta"></div></div>
+    <div class="kpi"><span>Ventas netas</span><strong id="kpi-gmv">$0</strong><div id="delta-gmv" class="delta"></div></div>
+    <div class="kpi"><span>Transacciones</span><strong id="kpi-tx">0</strong><div id="delta-tx" class="delta"></div></div>
+    <div class="kpi"><span>Ticket promedio</span><strong id="kpi-ticket">$0</strong><div id="delta-ticket" class="delta"></div></div>
+    <div class="kpi"><span>Ventas netas por metro cuadrado</span><strong id="kpi-sqm">$0</strong><div id="delta-sqm" class="delta"></div></div>
   </div>
+  <section>
+    <h2>Indicadores principales</h2>
+    <details class="logic" open>
+      <summary>Explicacion tecnica y consulta base</summary>
+      <p>Los indicadores usan ventas netas: una venta completada suma y una devolucion resta. El ticket promedio divide ventas netas entre transacciones. Las ventas netas por metro cuadrado dividen las ventas netas entre el tamano de las tiendas incluidas por los filtros.</p>
+      <pre><code>WITH ventas_por_tienda AS (
+  SELECT
+    s.store_id,
+    s.size_sqm,
+    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+    COUNT(DISTINCT t.transaction_id) AS transacciones
+  FROM dbo.transactions t
+  JOIN dbo.stores s ON s.store_id = t.store_id
+  WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
+  GROUP BY s.store_id, s.size_sqm
+)
+SELECT
+  SUM(ventas_netas) AS ventas_netas,
+  SUM(transacciones) AS transacciones,
+  SUM(ventas_netas) / NULLIF(SUM(transacciones), 0) AS ticket_promedio,
+  SUM(ventas_netas) / NULLIF(SUM(size_sqm), 0) AS ventas_netas_por_metro_cuadrado
+FROM ventas_por_tienda;</code></pre>
+    </details>
+  </section>
   <div class="layout">
     <div>
-      <section><h2>Comp Sales Weekly Trend</h2><svg id="trend" viewBox="0 0 900 320"></svg></section>
-      <section><h2>Store Ranking by Format</h2><table id="ranking"></table></section>
-      <section><h2>Loyalty Cohort Retention</h2><table id="retention" class="heat"></table></section>
+      <section>
+        <h2>Tendencia semanal de ventas comparables</h2>
+        <svg id="trend" viewBox="0 0 900 320"></svg>
+        <details class="logic">
+          <summary>Explicacion tecnica y consulta usada</summary>
+          <p>La grafica agrupa las ventas netas por semana y por formato. En entrevista puedes explicarlo asi: convierto cada transaccion a venta neta, uno la tienda para saber el formato y agrego por inicio de semana.</p>
+          <pre><code>SET DATEFIRST 1; -- lunes como primer dia de la semana
+
+SELECT
+  DATEADD(day, 1 - DATEPART(weekday, CAST(t.transaction_date AS date)), CAST(t.transaction_date AS date)) AS semana,
+  s.format AS formato,
+  SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas
+FROM dbo.transactions t
+JOIN dbo.stores s ON s.store_id = t.store_id
+WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
+GROUP BY DATEADD(day, 1 - DATEPART(weekday, CAST(t.transaction_date AS date)), CAST(t.transaction_date AS date)), s.format
+ORDER BY semana, formato;</code></pre>
+        </details>
+      </section>
+      <section>
+        <h2>Ranking de tiendas por formato</h2>
+        <table id="ranking"></table>
+        <details class="logic">
+          <summary>Explicacion tecnica y consulta usada</summary>
+          <p>Este ranking calcula ventas netas, ticket promedio y ventas netas por metro cuadrado por tienda. Luego compara cada tienda contra el percentil 25 de su formato para marcar bajo rendimiento.</p>
+          <pre><code>WITH ventas_tienda AS (
+  SELECT
+    s.store_id,
+    s.store_name,
+    s.format,
+    s.size_sqm,
+    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+    COUNT(DISTINCT t.transaction_id) AS transacciones
+  FROM dbo.transactions t
+  JOIN dbo.stores s ON s.store_id = t.store_id
+  WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
+  GROUP BY s.store_id, s.store_name, s.format, s.size_sqm
+),
+scored AS (
+  SELECT
+    *,
+    ventas_netas / NULLIF(size_sqm, 0) AS ventas_netas_por_metro_cuadrado,
+    ventas_netas / NULLIF(transacciones, 0) AS ticket_promedio,
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ventas_netas / NULLIF(size_sqm, 0))
+      OVER (PARTITION BY format) AS percentil_25_formato
+  FROM ventas_tienda
+)
+SELECT *,
+  CASE WHEN ventas_netas_por_metro_cuadrado < percentil_25_formato THEN 'BAJO_RENDIMIENTO' ELSE 'OK' END AS alerta
+FROM scored
+ORDER BY format, ventas_netas_por_metro_cuadrado DESC;</code></pre>
+        </details>
+      </section>
+      <section>
+        <h2>Retencion de clientes de lealtad por cohorte</h2>
+        <table id="retention" class="heat"></table>
+        <details class="logic">
+          <summary>Explicacion tecnica y consulta usada</summary>
+          <p>Una cohorte es el mes de primera compra del cliente identificado. La retencion del mes 1, 2, 3 o 6 es el porcentaje de clientes de esa cohorte que vuelve a comprar en ese mes relativo.</p>
+          <pre><code>WITH ventas_lealtad AS (
+  SELECT
+    customer_id,
+    DATEFROMPARTS(YEAR(transaction_date), MONTH(transaction_date), 1) AS mes_compra,
+    total_amount
+  FROM dbo.transactions
+  WHERE loyalty_card = 1 AND customer_id IS NOT NULL AND status = 'COMPLETED'
+),
+primera_compra AS (
+  SELECT customer_id, MIN(mes_compra) AS mes_cohorte
+  FROM ventas_lealtad
+  GROUP BY customer_id
+),
+actividad AS (
+  SELECT
+    p.mes_cohorte,
+    DATEDIFF(month, p.mes_cohorte, v.mes_compra) AS mes_relativo,
+    v.customer_id,
+    v.total_amount
+  FROM ventas_lealtad v
+  JOIN primera_compra p ON p.customer_id = v.customer_id
+)
+SELECT
+  mes_cohorte,
+  COUNT(DISTINCT CASE WHEN mes_relativo = 0 THEN customer_id END) AS clientes_cohorte,
+  COUNT(DISTINCT CASE WHEN mes_relativo = 1 THEN customer_id END) * 1.0
+    / NULLIF(COUNT(DISTINCT CASE WHEN mes_relativo = 0 THEN customer_id END), 0) AS retencion_mes_1,
+  COUNT(DISTINCT CASE WHEN mes_relativo = 2 THEN customer_id END) * 1.0
+    / NULLIF(COUNT(DISTINCT CASE WHEN mes_relativo = 0 THEN customer_id END), 0) AS retencion_mes_2,
+  COUNT(DISTINCT CASE WHEN mes_relativo = 3 THEN customer_id END) * 1.0
+    / NULLIF(COUNT(DISTINCT CASE WHEN mes_relativo = 0 THEN customer_id END), 0) AS retencion_mes_3,
+  COUNT(DISTINCT CASE WHEN mes_relativo = 6 THEN customer_id END) * 1.0
+    / NULLIF(COUNT(DISTINCT CASE WHEN mes_relativo = 0 THEN customer_id END), 0) AS retencion_mes_6
+FROM actividad
+GROUP BY mes_cohorte
+ORDER BY mes_cohorte;</code></pre>
+        </details>
+      </section>
     </div>
     <div>
-      <section><h2>Stock Active Gaps</h2><table id="stock"></table></section>
+      <section>
+        <h2>Quiebres activos de venta por tienda y producto</h2>
+        <table id="stock"></table>
+        <details class="logic">
+          <summary>Explicacion tecnica y consulta usada</summary>
+          <p>Un posible quiebre aparece cuando un producto que historicamente se vendia en una tienda deja de venderse por tres o mas dias. La perdida estimada usa el promedio diario de ventas de los 14 dias previos multiplicado por la duracion del gap.</p>
+          <pre><code>WITH ventas_diarias AS (
+  SELECT
+    t.store_id,
+    ti.item_id,
+    CAST(t.transaction_date AS date) AS fecha,
+    SUM(ti.quantity * ti.unit_price) AS ventas
+  FROM dbo.transaction_items ti
+  JOIN dbo.transactions t ON t.transaction_id = ti.transaction_id
+  WHERE t.status = 'COMPLETED'
+  GROUP BY t.store_id, ti.item_id, CAST(t.transaction_date AS date)
+),
+gaps_priorizados AS (
+  SELECT TOP 20
+    store_id,
+    item_id,
+    MAX(fecha) AS ultima_fecha_con_venta,
+    DATEDIFF(day, MAX(fecha), '2025-06-30') AS dias_sin_venta
+  FROM ventas_diarias
+  GROUP BY store_id, item_id
+  HAVING DATEDIFF(day, MAX(fecha), '2025-06-30') >= 3
+)
+SELECT
+  g.store_id,
+  s.store_name,
+  g.item_id,
+  p.item_name,
+  g.dias_sin_venta,
+  (SELECT SUM(v.ventas) / 14.0
+   FROM ventas_diarias v
+   WHERE v.store_id = g.store_id
+     AND v.item_id = g.item_id
+     AND v.fecha BETWEEN DATEADD(day, -14, DATEADD(day, 1, g.ultima_fecha_con_venta)) AND g.ultima_fecha_con_venta)
+   * g.dias_sin_venta AS ventas_estimadas_perdidas
+FROM gaps_priorizados g
+JOIN dbo.stores s ON s.store_id = g.store_id
+JOIN dbo.products p ON p.item_id = g.item_id
+ORDER BY ventas_estimadas_perdidas DESC;</code></pre>
+        </details>
+      </section>
     </div>
   </div>
 </main>
 <script>
 const DATA = {json.dumps(payload, ensure_ascii=False)};
 const fmtMoney = v => '$' + Math.round(v).toLocaleString('en-US');
-const fmtPct = v => (v>=0?'+':'') + v.toFixed(1) + '% vs previous period';
+const fmtPct = v => (v>=0?'+':'') + v.toFixed(1) + '% comparado con periodo anterior';
 const byId = id => document.getElementById(id);
 const colors = {{'HIPERMERCADO':'#176B87','SUPERMERCADO':'#3E8E7E','DESCUENTO':'#D97941','EXPRESS':'#7B4B94','2025':'#176B87','2024':'#D97941'}};
 
@@ -1467,7 +1633,7 @@ function storeRanking(rows) {{
   const sort = byId('sort').value;
   arr.sort((a,b)=>b[sort]-a[sort]);
   const rowsHtml = arr.slice(0,18).map(d=>`<tr class="${{d.low?'low':''}}"><td>${{d.store_name}}</td><td>${{d.format}}</td><td>${{fmtMoney(d.gmv)}}</td><td>${{fmtMoney(d.gmv_sqm)}}</td><td>${{fmtMoney(d.ticket)}}</td></tr>`).join('');
-  byId('ranking').innerHTML = '<tr><th>Store</th><th>Format</th><th>GMV</th><th>GMV/m2</th><th>Ticket</th></tr>' + rowsHtml;
+  byId('ranking').innerHTML = '<tr><th>Tienda</th><th>Formato</th><th>Ventas netas</th><th>Ventas netas por metro cuadrado</th><th>Ticket promedio</th></tr>' + rowsHtml;
 }}
 
 function drawTrend(rows) {{
@@ -1499,7 +1665,7 @@ function drawTrend(rows) {{
 }}
 
 function renderRetention() {{
-  const headers = ['Cohort','M0','M1','M2','M3','M6'];
+  const headers = ['Cohorte','Mes 0','Mes 1','Mes 2','Mes 3','Mes 6'];
   const rows = DATA.retention.map(r => `<tr><td>${{r.cohort}}</td>${{['m0','m1','m2','m3','m6'].map(k=>`<td style="background:rgba(62,142,126,${{(r[k]||0)/120}})">${{r[k]==null?'':r[k]+'%'}}</td>`).join('')}}</tr>`).join('');
   byId('retention').innerHTML = '<tr>' + headers.map(h=>`<th>${{h}}</th>`).join('') + '</tr>' + rows;
 }}
@@ -1507,7 +1673,7 @@ function renderRetention() {{
 function renderStock() {{
   const c=byId('country').value, f=byId('format').value, r=byId('region').value;
   const rows = DATA.stock.filter(d => (!c || d.country===c) && (!f || d.format===f) && (!r || d.region===r)).slice(0,20);
-  byId('stock').innerHTML = '<tr><th>Store</th><th>Item</th><th>Days</th><th>Lost GMV</th></tr>' + rows.map(d=>`<tr><td>${{d.store_name}}</td><td>${{d.item_name}}</td><td>${{d.gap_days}}</td><td>${{fmtMoney(d.estimated_lost_gmv)}}</td></tr>`).join('');
+  byId('stock').innerHTML = '<tr><th>Tienda</th><th>Producto</th><th>Dias sin venta</th><th>Ventas estimadas perdidas</th></tr>' + rows.map(d=>`<tr><td>${{d.store_name}}</td><td>${{d.item_name}}</td><td>${{d.gap_days}}</td><td>${{fmtMoney(d.estimated_lost_gmv)}}</td></tr>`).join('');
 }}
 
 function update() {{
@@ -1579,8 +1745,8 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
     slide(
         "1. Executive Summary",
         [
-            f"Net GMV is concentrated: Electronics is the main category and drives more than half of total sales.",
-            f"Stock gap signals show {money(lost_total)} estimated lost GMV. This is the largest operational risk.",
+            f"Net sales are concentrated: Electronics is the main category and drives more than half of total sales.",
+            f"Stock gap signals show {money(lost_total)} estimated lost sales. This is the largest operational risk.",
             f"The A/B test is not ready for rollout: p-value is {t['p_value']:.3f} and two stores had both variants.",
         ],
     )
@@ -1603,7 +1769,7 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
     slide(
         "4. Risks",
         [
-            "Data quality risk: 1,745 transactions do not match item totals. Use transaction total for store GMV.",
+            "Data quality risk: 1,745 transactions do not match item totals. Use transaction total for store sales.",
             "Experiment risk: Treatment stores are smaller before the test. The groups are not fully balanced.",
             f"Stock risk: top categories with gaps can erase millions in sales if supply is not corrected.",
         ],
@@ -1613,7 +1779,7 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
         [
             "Do not roll out the new display to all stores yet. Run a second balanced test by format and size.",
             f"Create a daily stock alert for the top 20 Electronics SKUs. Owner: Supply Chain. Start in 30 days.",
-            f"Launch a 90-day productivity sprint for stores below p25 GMV/m2. Owner: Regional Operations.",
+            f"Launch a 90-day productivity sprint for stores below p25 net sales per square meter. Owner: Regional Operations.",
         ],
         "Simple English version for VP Operations review.",
     )
@@ -1687,7 +1853,7 @@ pip install -r requirements.txt
 python scripts/generate_all.py
 ```
 
-En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para SQL Server desde VS Code, usa la extension MSSQL solo si tienes conexion a un servidor; este repo no requiere instalar MSSQL local.
+En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para mostrar la parte de base de datos desde VS Code, abre `sql/README_SQL_SERVER.md` y ejecuta los scripts numerados de la carpeta `sql/` con la extension MSSQL.
 
 ## Datos
 
@@ -1708,6 +1874,11 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
+- `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
+- `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
+- `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
+- `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
+- `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
 
 ## Uso de IA documentado
 
@@ -1759,20 +1930,53 @@ def write_support_files() -> None:
     )
     sqlserver_note = """# SQL Server desde VS Code
 
-La prueba permite SQL estandar o BigQuery SQL; `bloque1_queries.sql` esta escrito en BigQuery Standard SQL por legibilidad y funciones analiticas.
+Esta carpeta permite demostrar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
 
-Si durante la entrevista quieren verlo en SQL Server:
+## Requisito
 
-1. Conecta la extension MSSQL de VS Code a un servidor SQL Server disponible.
-2. Crea tablas equivalentes a los CSV.
-3. Importa los CSV desde el servidor o usa el asistente de importacion disponible en tu entorno.
-4. Traduce funciones puntuales:
-   - `DATE_TRUNC(..., MONTH)` -> `DATEFROMPARTS(YEAR(fecha), MONTH(fecha), 1)`
-   - `DATE_DIFF(a,b,MONTH)` -> `DATEDIFF(MONTH,b,a)`
-   - `SAFE_DIVIDE(x,y)` -> `x / NULLIF(y,0)`
-   - `LOGICAL_OR` -> `MAX(CASE WHEN condicion THEN 1 ELSE 0 END)`
+La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL Server existente: servidor de la empresa, Azure SQL, una maquina remota o un SQL Server ya instalado por TI. No necesitas instalar SQL Server localmente en tu computadora de trabajo.
 
-No se incluye dependencia a MSSQL local porque la computadora de trabajo no permite instalarlo.
+## Orden recomendado
+
+1. Abre VS Code en la carpeta del repo.
+2. Instala o abre la extension **SQL Server (MSSQL)**.
+3. Crea una conexion a tu servidor desde el panel de la extension.
+4. Ejecuta los archivos en este orden:
+
+| Orden | Archivo | Que hace |
+| --- | --- | --- |
+| 1 | `00_crear_tablas_sql_server.sql` | Crea la base `RetailPruebaTecnica`, tablas e indices. |
+| 2 | `01_cargar_csv_sql_server.sql` | Carga los CSV de `data/raw` usando staging tables. |
+| 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
+| 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
+| 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
+
+## Punto importante sobre carga de CSV
+
+`BULK INSERT` lee archivos desde la maquina donde corre SQL Server, no desde VS Code. Si el servidor no puede leer tu carpeta local:
+
+- usa el asistente **Import Flat File** de la extension MSSQL si esta disponible en tu entorno;
+- o copia los CSV a una ruta compartida/accesible para el servidor;
+- o pide una base temporal y sube los CSV con la herramienta corporativa permitida.
+
+## Como ejecutar una query en VS Code
+
+1. Abre un archivo `.sql`.
+2. Selecciona la conexion en la parte superior del editor.
+3. Selecciona la base `RetailPruebaTecnica`.
+4. Ejecuta todo el archivo o selecciona una consulta especifica.
+5. Revisa los resultados en el panel inferior.
+
+## Equivalencia con BigQuery
+
+El archivo `bloque1_queries.sql` conserva la version BigQuery Standard SQL pedida por la prueba. El archivo `03_bloque1_queries_sql_server.sql` es la version ejecutable en SQL Server.
+
+Traducciones principales:
+
+- `DATE_TRUNC(..., MONTH)` -> `DATEFROMPARTS(YEAR(fecha), MONTH(fecha), 1)`
+- `DATE_DIFF(a, b, MONTH)` -> `DATEDIFF(MONTH, b, a)`
+- `SAFE_DIVIDE(x, y)` -> `x / NULLIF(y, 0)`
+- `LOGICAL_OR` -> `MAX(CASE WHEN condicion THEN 1 ELSE 0 END)`
 """
     (ROOT / "sql" / "README_SQL_SERVER.md").write_text(sqlserver_note, encoding="utf-8")
 

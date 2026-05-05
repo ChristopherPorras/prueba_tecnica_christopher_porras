@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="880" height="430" viewBox="0 0 880 430">
 <rect width="100%" height="100%" fill="#fbfaf7"/>
-<text x="190" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">A/B test: GMV semanal promedio por tienda</text>
+<text x="190" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">Prueba A/B: ventas semanales promedio por tienda</text>
 <text x="20" y="151.5" font-family="Arial" font-size="13" fill="#344054">CONTROL</text>
 <rect x="190" y="63.0" width="607.4" height="159.0" rx="3" fill="#D97941"/>
 <text x="805.4" y="151.5" font-family="Arial" font-size="12" fill="#344054">$16,460</text>

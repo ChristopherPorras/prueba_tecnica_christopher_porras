@@ -24,18 +24,18 @@
 <body>
 <main>
   <h1>Bloque 3 - Analisis Exploratorio + Experimentacion</h1>
-  <p>Datos sinteticos de retail multiformato, enero 2024 a junio 2025. GMV neto resta devoluciones; el A/B test usa solo ventas completadas.</p>
+  <p>Datos sinteticos de retail multiformato, enero 2024 a junio 2025. Las ventas netas restan devoluciones; la prueba A/B usa solo ventas completadas.</p>
 
   <div class="grid">
-    <div class="kpi"><span>GMV neto</span><b>$29,397,205</b></div>
+    <div class="kpi"><span>Ventas netas</span><b>$29,397,205</b></div>
     <div class="kpi"><span>Tiendas</span><b>40</b></div>
-    <div class="kpi"><span>Vendors GMROI &lt; 1</span><b>120</b></div>
-    <div class="kpi"><span>GMV perdido estimado</span><b>$59,498,062</b></div>
+    <div class="kpi"><span>Proveedores-categoria con retorno bajo</span><b>120</b></div>
+    <div class="kpi"><span>Ventas estimadas perdidas</span><b>$59,498,062</b></div>
   </div>
 
   <h2>Parte A - Analisis Exploratorio</h2>
   <h3>1. Estacionalidad por formato</h3>
-  <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="GMV semanal por formato">
+  <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="Ventas netas semanales por formato">
   <p>El formato mas sensible es <b>EXPRESS</b>, con coeficiente de variacion 0.23. Los picos principales se concentran alrededor de semanas comerciales fuertes; las caidas grandes se explican por cierres de ciclo/promocion o semanas posteriores a picos.</p>
   <table border="1" class="dataframe">
   <thead>
@@ -109,7 +109,7 @@
 
   <h3>2. Pareto de categorias por formato</h3>
   <img src="bloque3_visualizaciones/pareto_categorias_gmv.svg" alt="Pareto de categorias">
-  <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% del GMV. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
+  <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% de las ventas netas. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -200,8 +200,8 @@
   <p>Las cohortes recientes de abril-junio 2024 retienen mejor en M1 (75.8%) que las cohortes enero-marzo (66.3%), aunque las cohortes recientes son pequenas. La mayor caida promedio ocurre de M0 a M1; despues hay recuperaciones, lo que apunta a compras recurrentes no necesariamente mensuales.</p>
 
   <h3>4. Quiebres de stock e impacto</h3>
-  <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="GMV perdido por quiebres">
-  <p>Se detectaron 315,383 gaps de 3+ dias. No todos son quiebres reales, pero priorizados por GMV perdido apuntan a Electronica como el mayor riesgo: $31,254,439. Proveedores con mayor impacto estimado:</p>
+  <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="Ventas estimadas perdidas por quiebres">
+  <p>Se detectaron 315,383 gaps de 3+ dias. No todos son quiebres reales, pero priorizados por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: $31,254,439. Proveedores con mayor impacto estimado:</p>
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -240,12 +240,12 @@
 </table>
 
   <h3>5. Hallazgo libre</h3>
-  <div class="callout">Electronica representa 52.6% del GMV total aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
+  <div class="callout">Electronica representa 52.6% de las ventas totales aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
 
   <h2>Parte B - Interpretacion de A/B Test</h2>
-  <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="A/B test GMV">
+  <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="Prueba A/B de ventas promedio">
   <p>Validacion: hay dos tiendas asignadas a ambos grupos (TIENDA_008, TIENDA_037), excluidas del test primario. Los grupos limpios no son perfectamente comparables: CONTROL tiene tiendas mas grandes y mas hiper/supermercados.</p>
-  <p>Resultado principal de GMV semanal promedio por tienda: diferencia TREATMENT - CONTROL = <b>$-2,794.97</b>, lift -17.0%, p-value 0.241, IC95% [$-7,551.11, $1,961.16]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
+  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>$-2,794.97</b>, lift -17.0%, p-value 0.241, IC95% [$-7,551.11, $1,961.16]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
   <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = $1,751.62, p-value 0.004. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
   <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria un segundo test estratificado por formato y tamano, con costo de implementacion medido. Si el p-value fuera 0.08 y el lift cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
 </main>
