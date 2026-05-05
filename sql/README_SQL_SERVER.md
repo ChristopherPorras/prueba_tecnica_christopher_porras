@@ -4,7 +4,22 @@ Esta carpeta permite presentar la prueba tecnica como trabajo de base de datos u
 
 ## Requisito
 
-La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL Server existente: servidor de la empresa, Azure SQL, una maquina remota o un SQL Server ya instalado por TI. No necesitas instalar SQL Server localmente en tu computadora de trabajo.
+La extension MSSQL de VS Code es solo el cliente. Para usar SQL Server localmente, la computadora debe tener un motor local disponible: `SQL Server`, `SQL Server Express` o `LocalDB`. Si no existe ninguna instancia local, VS Code no puede crear la base por si solo.
+
+Instancias locales comunes:
+
+| Caso | Server name en VS Code | Autenticacion recomendada |
+| --- | --- | --- |
+| SQL Server local default | `localhost` | Windows Authentication |
+| SQL Server Express local | `localhost\SQLEXPRESS` | Windows Authentication |
+| SQL Server LocalDB | `(localdb)\MSSQLLocalDB` | Windows Authentication |
+
+Comandos utiles en PowerShell:
+
+```powershell
+Get-Service | Where-Object {$_.Name -like 'MSSQL*' -or $_.Name -like 'SQLBrowser'} | Select-Object Name, Status, DisplayName
+sqllocaldb info
+```
 
 ## Orden recomendado
 

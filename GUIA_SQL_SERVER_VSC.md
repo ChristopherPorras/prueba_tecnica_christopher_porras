@@ -6,27 +6,27 @@ Necesitas tres cosas:
 
 1. VS Code.
 2. Extension **SQL Server (MSSQL)**.
-3. Acceso a un SQL Server existente: servidor corporativo, Azure SQL, maquina remota o una instancia ya instalada por TI.
+3. Un motor de SQL Server corriendo en la computadora. Puede ser `SQL Server`, `SQL Server Express` o `LocalDB`.
 
-La extension MSSQL no es el motor de base de datos; es el cliente para conectarte y ejecutar T-SQL.
+La extension MSSQL no es el motor de base de datos; es el cliente para conectarte y ejecutar T-SQL. Si la computadora no tiene ningun motor local, VS Code no puede crear la base por si solo.
 
 ## 2. Que poner en cada campo de conexion
 
 | Campo | Que poner | Como conseguirlo |
 | --- | --- | --- |
-| Profile Name | Un nombre local para identificar la conexion, por ejemplo `RetailPruebaTecnica - Trabajo`. | Lo defines tu. Solo sirve para reconocer la conexion en VS Code. |
+| Profile Name | `RetailPruebaTecnica Local`. | Lo defines tu. Solo sirve para reconocer la conexion en VS Code. |
 | Connection Group | `<Default>`. | Dejalo asi, salvo que quieras agrupar conexiones por proyecto. |
-| Input type | `Parameters`. | Es la opcion mas practica porque llenas campo por campo. Usa `Load from Connection String` solo si TI te entrega una cadena completa. |
-| Server name | El servidor real de SQL Server. Ejemplos: `SERVIDOR`, `SERVIDOR,1433`, `SERVIDOR\INSTANCIA` o `miservidor.database.windows.net`. | Te lo da TI/DBA, Azure Portal, Fabric o las propiedades de una conexion ya existente en SSMS/VS Code. |
-| Trust server certificate | Activado si es un servidor interno o si aparece error de certificado. | En ambientes corporativos es comun por certificados internos. Si TI indica otra politica, sigue esa indicacion. |
-| Authentication type | El metodo que te asignen: `SQL Login`, `Windows Authentication` o `Microsoft Entra ID`. | Lo define TI/DBA. Si la pantalla esta en `SQL Login`, necesitas usuario y clave de SQL Server. |
-| User name | Usuario de SQL Server. | Te lo entrega TI/DBA. No es tu usuario de GitHub. Solo es tu usuario de Windows si TI indica autenticacion integrada. |
-| Password | Clave del usuario SQL. | Te la entrega TI/DBA o el portal corporativo de credenciales. |
-| Save Password | Opcional. | Activarlo solo si la computadora es segura y la politica de la empresa lo permite. |
+| Input type | `Parameters`. | Es la opcion mas practica porque llenas campo por campo. |
+| Server name | Prueba en este orden: `localhost`, `localhost\SQLEXPRESS`, `(localdb)\MSSQLLocalDB`. | Sale de las instancias locales instaladas en Windows. Abajo estan los comandos para revisarlo. |
+| Trust server certificate | Activado. | Para trabajo local evita errores de certificado. |
+| Authentication type | `Windows Authentication`, si esta disponible. | Es lo normal para SQL Server local o LocalDB. Si solo tienes `SQL Login`, necesitas un usuario SQL creado dentro de esa instancia. |
+| User name | Dejalo vacio con `Windows Authentication`. | Solo se llena si usas `SQL Login`. |
+| Password | Dejalo vacio con `Windows Authentication`. | Solo se llena si usas `SQL Login`. |
+| Save Password | No hace falta con `Windows Authentication`. | Activarlo solo si usas `SQL Login` y la computadora es segura. |
 | Database name | `RetailPruebaTecnica` cuando la base ya exista. Si todavia no existe, dejalo vacio o usa `master` para ejecutar el script de creacion. | El script `sql/00_crear_tablas_sql_server.sql` crea `RetailPruebaTecnica`. |
 | Encrypt | `Mandatory` si VS Code lo exige. | Mantenerlo asi. Si falla por certificado, activa `Trust server certificate`. |
 
-Punto clave: si no tienes `Server name`, `Authentication type`, `User name` y `Password`, no puedes conectarte todavia. La extension de VS Code no crea el servidor; solo se conecta a uno existente.
+Punto clave: si `localhost`, `localhost\SQLEXPRESS` y `(localdb)\MSSQLLocalDB` fallan, probablemente esa computadora no tiene SQL Server local instalado. En ese caso la extension no alcanza: hace falta que exista el motor de base de datos.
 
 ## 3. Como hacer que SQL Server se vea en VS Code
 
@@ -44,17 +44,36 @@ Punto clave: si no tienes `Server name`, `Authentication type`, `User name` y `P
 
 Si no ves tablas despues de crearlas, presiona refresh en Object Explorer.
 
-## 4. Como obtener los datos de conexion
+## 4. Como saber que instancia local tienes
 
-Normalmente salen de uno de estos lugares:
+En la HP abre PowerShell y ejecuta:
 
-- Correo, ticket o documentacion de TI con el servidor, puerto, base, usuario y tipo de autenticacion.
-- Azure Portal, si la base esta en Azure SQL: busca el SQL server y copia el `Server name`.
-- Microsoft Fabric, si el entorno usa Warehouse/Lakehouse con endpoint SQL.
-- Una conexion existente de un companero en SSMS o Azure Data Studio: revisar propiedades de conexion.
-- Un DBA o lider tecnico: pedir servidor, base temporal, usuario SQL y permisos de lectura/escritura.
+```powershell
+Get-Service | Where-Object {$_.Name -like 'MSSQL*' -or $_.Name -like 'SQLBrowser'} | Select-Object Name, Status, DisplayName
+```
 
-Si solo te entregan una connection string, cambia `Input type` a `Load from Connection String` y pegala completa.
+Interpretacion:
+
+| Resultado | Server name en VS Code |
+| --- | --- |
+| `MSSQLSERVER` en estado `Running` | `localhost` |
+| `MSSQL$SQLEXPRESS` en estado `Running` | `localhost\SQLEXPRESS` |
+| No aparece ningun servicio SQL Server | Probar LocalDB con el siguiente comando |
+
+Para revisar LocalDB:
+
+```powershell
+sqllocaldb info
+```
+
+Interpretacion:
+
+| Resultado | Server name en VS Code |
+| --- | --- |
+| Aparece `MSSQLLocalDB` | `(localdb)\MSSQLLocalDB` |
+| `sqllocaldb` no se reconoce o no lista instancias | No hay LocalDB disponible |
+
+Si el servicio existe pero esta detenido, en una computadora con permisos suficientes se puede iniciar desde Servicios de Windows. Si no tienes permisos, ahi si necesitas que la computadora ya lo tenga iniciado.
 
 ## 5. Como ejecutar los scripts del repo
 
@@ -77,13 +96,13 @@ por la ruta real de tu carpeta `data/raw`.
 
 ## 6. Si BULK INSERT no funciona
 
-Esto es normal en ambientes corporativos. `BULK INSERT` lee archivos desde donde corre SQL Server, no desde tu VS Code.
+`BULK INSERT` lee archivos desde donde corre SQL Server. Si el servidor es local, la ruta debe existir en esa misma computadora.
 
 Opciones:
 
 - Usa **Import Flat File** en la extension MSSQL.
-- Copia los CSV a una carpeta accesible por el servidor.
-- Pide una base temporal y una ruta de carga permitida.
+- Copia los CSV a una ruta corta, por ejemplo `C:\Temp\prueba_tecnica\data\raw\`.
+- Verifica que el usuario que ejecuta SQL Server tenga permiso de lectura sobre esa carpeta.
 - Si la base ya esta cargada, ejecuta `02_validar_carga_sql_server.sql` y `05_consultas_exploracion_operativa.sql`.
 
 ## 7. Ruta corta de revision
