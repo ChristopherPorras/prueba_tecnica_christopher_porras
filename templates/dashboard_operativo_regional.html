@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard operativo regional de retail</title>
+  <style>
+    :root {
+      --ink:#1f2933;
+      --muted:#667085;
+      --line:#d9dee5;
+      --paper:#f6f7f3;
+      --panel:#ffffff;
+      --panel-soft:#f9faf7;
+      --teal:#176B87;
+      --green:#3E8E7E;
+      --orange:#D97941;
+      --red:#C04B37;
+      --purple:#7B4B94;
+      --blue:#2F6FDB;
+      --shadow:0 18px 45px rgba(31,41,51,.08);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Inter, Segoe UI, Arial, sans-serif; color:var(--ink); background:var(--paper); }
+    button, input, select { font:inherit; }
+    .app-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(14px); }
+    .header-inner { max-width:1440px; margin:0 auto; padding:18px 24px 16px; }
+    .title-row { display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start; }
+    h1 { margin:0; font-size:25px; line-height:1.15; letter-spacing:0; }
+    .subtitle { margin:7px 0 0; color:var(--muted); font-size:13px; max-width:780px; line-height:1.45; }
+    .actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+    .btn { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:8px; min-height:34px; padding:7px 11px; cursor:pointer; font-size:12px; font-weight:700; }
+    .btn.primary { border-color:var(--teal); background:var(--teal); color:#fff; }
+    .btn:hover { transform:translateY(-1px); box-shadow:0 8px 20px rgba(31,41,51,.10); }
+    .filters { display:grid; grid-template-columns:repeat(12, minmax(0,1fr)); gap:10px; align-items:end; margin-top:16px; }
+    .filters > div { min-width:0; }
+    .filter-2 { grid-column:span 2; }
+    .filter-3 { grid-column:span 3; }
+    .filter-4 { grid-column:span 4; }
+    label { display:block; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+    select, input { width:100%; min-height:36px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); padding:8px 10px; outline:none; }
+    select:focus, input:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(23,107,135,.13); }
+    .filter-status { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; color:var(--muted); font-size:12px; }
+    .chips { display:flex; gap:8px; flex-wrap:wrap; }
+    .chip { border:1px solid var(--line); background:var(--panel-soft); color:var(--ink); border-radius:999px; padding:5px 9px; font-size:12px; }
+    main { max-width:1440px; margin:0 auto; padding:22px 24px 48px; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }
+    .kpi { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:15px; box-shadow:var(--shadow); min-height:128px; overflow:hidden; }
+    .kpi-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .kpi span { color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .kpi strong { display:block; font-size:27px; line-height:1.1; margin-top:13px; letter-spacing:0; }
+    .delta { min-height:18px; margin-top:8px; font-size:12px; font-weight:700; color:var(--muted); }
+    .delta.up { color:var(--green); }
+    .delta.down { color:var(--red); }
+    .kpi-bar { height:5px; margin-top:14px; background:#edf0f2; border-radius:999px; overflow:hidden; }
+    .kpi-bar i { display:block; height:100%; width:0%; background:var(--teal); border-radius:999px; transition:width .35s ease; }
+    .kpi:nth-child(2) .kpi-bar i { background:var(--orange); }
+    .kpi:nth-child(3) .kpi-bar i { background:var(--green); }
+    .kpi:nth-child(4) .kpi-bar i { background:var(--purple); }
+    .insight-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+    .insight { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:13px 14px; }
+    .insight span { display:block; color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .insight b { display:block; margin-top:6px; font-size:18px; }
+    .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(360px,.85fr); gap:14px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow); }
+    .panel-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    h2 { margin:0; font-size:17px; line-height:1.25; letter-spacing:0; }
+    .panel-note { margin:4px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
+    .segmented { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff; }
+    .segmented button { border:0; border-right:1px solid var(--line); background:#fff; color:var(--muted); padding:7px 10px; font-size:12px; cursor:pointer; font-weight:800; }
+    .segmented button:last-child { border-right:0; }
+    .segmented button.active { background:var(--teal); color:#fff; }
+    svg { width:100%; height:330px; display:block; }
+    .chart-wrap { position:relative; min-height:330px; }
+    .tooltip { position:absolute; pointer-events:none; background:#111827; color:#fff; border-radius:8px; padding:8px 10px; font-size:12px; box-shadow:0 14px 32px rgba(17,24,39,.25); transform:translate(-50%,-112%); white-space:nowrap; display:none; }
+    .format-bars { display:grid; gap:10px; }
+    .format-row { border:1px solid var(--line); border-radius:8px; padding:10px; cursor:pointer; background:#fff; }
+    .format-row:hover { border-color:var(--teal); }
+    .format-row.active { border-color:var(--teal); box-shadow:0 0 0 3px rgba(23,107,135,.11); }
+    .format-row-top { display:flex; justify-content:space-between; gap:12px; font-size:13px; font-weight:800; }
+    .format-track { height:8px; border-radius:999px; background:#edf0f2; margin-top:8px; overflow:hidden; }
+    .format-fill { height:100%; border-radius:999px; width:0%; transition:width .35s ease; }
+    .table-tools { display:grid; grid-template-columns:minmax(180px,1fr) auto auto; gap:8px; align-items:center; margin-bottom:10px; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:8px; max-height:520px; }
+    table { width:100%; border-collapse:separate; border-spacing:0; font-size:12px; min-width:720px; }
+    th, td { padding:9px 10px; border-bottom:1px solid #edf0f2; text-align:left; background:#fff; }
+    th { position:sticky; top:0; z-index:1; color:var(--muted); font-weight:800; background:#f4f6f7; }
+    tr { cursor:pointer; }
+    tr:hover td { background:#f8fbfc; }
+    tr.low td { background:#fff3ef; }
+    tr.selected td { background:#eaf5f8; }
+    .status { display:inline-flex; align-items:center; border-radius:999px; padding:4px 8px; font-size:11px; font-weight:800; }
+    .status.ok { background:#edf7f3; color:var(--green); }
+    .status.low { background:#fff0ed; color:var(--red); }
+    .store-title { display:flex; justify-content:space-between; gap:12px; align-items:start; margin-bottom:8px; }
+    .store-title h3 { margin:0; font-size:18px; line-height:1.25; }
+    .store-title p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .metric-list { display:grid; gap:11px; margin-top:14px; }
+    .metric-line { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; }
+    .metric-line span { color:var(--muted); font-size:12px; }
+    .metric-line b { font-size:14px; }
+    .mini-track { grid-column:1 / -1; height:6px; background:#edf0f2; border-radius:999px; overflow:hidden; }
+    .mini-track i { display:block; height:100%; width:0%; background:var(--teal); border-radius:999px; }
+    .stock-controls { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    .stock-list { display:grid; gap:8px; max-height:470px; overflow:auto; padding-right:3px; }
+    .stock-item { border:1px solid var(--line); border-radius:8px; padding:10px; background:#fff; }
+    .stock-item strong { display:block; font-size:13px; line-height:1.3; }
+    .stock-item span { display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+    .stock-meta { display:flex; justify-content:space-between; gap:10px; margin-top:8px; color:var(--ink); font-weight:800; font-size:12px; }
+    .heat-grid { display:grid; grid-template-columns:1.15fr repeat(5,1fr); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+    .heat-cell { min-height:38px; padding:8px; border-right:1px solid #edf0f2; border-bottom:1px solid #edf0f2; font-size:12px; display:flex; align-items:center; justify-content:center; text-align:center; }
+    .heat-head { background:#f4f6f7; color:var(--muted); font-weight:800; }
+    .heat-cell:nth-child(6n) { border-right:0; }
+    .logic { margin-top:13px; border-top:1px solid #edf0f2; padding-top:10px; }
+    .logic summary { cursor:pointer; color:var(--teal); font-weight:800; font-size:13px; }
+    .logic p { color:var(--muted); font-size:13px; line-height:1.45; margin:8px 0; }
+    pre { white-space:pre-wrap; background:#121a24; color:#f5f7fb; padding:12px; border-radius:8px; overflow:auto; font-size:11px; line-height:1.45; }
+    .empty { color:var(--muted); font-size:13px; padding:18px; text-align:center; border:1px dashed var(--line); border-radius:8px; }
+    @media (max-width:1180px) {
+      .filters { grid-template-columns:repeat(4,1fr); }
+      .filters > div { grid-column:auto; }
+      .dashboard-grid { grid-template-columns:1fr; }
+      .kpis, .insight-strip { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:720px) {
+      .app-header { position:static; }
+      .header-inner, main { padding-left:14px; padding-right:14px; }
+      .title-row, .filters, .kpis, .insight-strip, .table-tools, .stock-controls { grid-template-columns:1fr; }
+      .filters > div { grid-column:auto; }
+      h1 { font-size:22px; }
+      table { min-width:680px; }
+    }
+  </style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <div class="title-row">
+      <div>
+        <h1>Dashboard operativo regional de retail</h1>
+        <p class="subtitle">Consola interactiva para revisar ventas netas, productividad por tienda, cohortes de lealtad y posibles quiebres de venta usando los filtros activos.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="last-90" type="button">Últimos 90 días</button>
+        <button class="btn" id="full-period" type="button">Todo el período</button>
+        <button class="btn primary" id="reset" type="button">Restablecer</button>
+      </div>
+    </div>
+    <div class="filters">
+      <div class="filter-2"><label>País</label><select id="country"><option value="">Todos</option></select></div>
+      <div class="filter-2"><label>Formato</label><select id="format"><option value="">Todos</option></select></div>
+      <div class="filter-2"><label>Región</label><select id="region"><option value="">Todas</option></select></div>
+      <div class="filter-3"><label>Fecha inicial</label><input id="start" type="date" value="__DEFAULT_START__"></div>
+      <div class="filter-3"><label>Fecha final</label><input id="end" type="date" value="__DEFAULT_END__"></div>
+      <div class="filter-4"><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
+      <div class="filter-4"><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Venta por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option><option value="tx">Transacciones</option></select></div>
+      <div class="filter-4"><label>Buscar tienda</label><input id="store-search" type="search" placeholder="Nombre o código"></div>
+    </div>
+    <div class="filter-status">
+      <div id="period-label">Periodo completo</div>
+      <div class="chips" id="active-chips"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-top"><span>Ventas netas</span><span id="kpi-stores">0 tiendas</span></div><strong id="kpi-gmv">$0</strong><div id="delta-gmv" class="delta"></div><div class="kpi-bar"><i id="bar-gmv"></i></div></div>
+    <div class="kpi"><div class="kpi-top"><span>Transacciones</span><span id="kpi-days">0 días</span></div><strong id="kpi-tx">0</strong><div id="delta-tx" class="delta"></div><div class="kpi-bar"><i id="bar-tx"></i></div></div>
+    <div class="kpi"><div class="kpi-top"><span>Ticket promedio</span><span>Venta neta</span></div><strong id="kpi-ticket">$0</strong><div id="delta-ticket" class="delta"></div><div class="kpi-bar"><i id="bar-ticket"></i></div></div>
+    <div class="kpi"><div class="kpi-top"><span>Ventas netas por metro cuadrado</span><span>Productividad</span></div><strong id="kpi-sqm">$0</strong><div id="delta-sqm" class="delta"></div><div class="kpi-bar"><i id="bar-sqm"></i></div></div>
+  </div>
+
+  <div class="insight-strip">
+    <div class="insight"><span>Tiendas visibles</span><b id="insight-stores">0</b></div>
+    <div class="insight"><span>Debajo del percentil 25</span><b id="insight-low">0</b></div>
+    <div class="insight"><span>Posibles quiebres activos</span><b id="insight-stock">0</b></div>
+    <div class="insight"><span>Tienda seleccionada</span><b id="insight-selected">Ninguna</b></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div>
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Tendencia semanal</h2>
+            <p class="panel-note">Comparación de 2024 y 2025 con mensaje flotante al pasar el cursor.</p>
+          </div>
+          <div class="segmented" aria-label="Métrica de tendencia">
+            <button id="metric-gmv" class="active" type="button">Ventas netas</button>
+            <button id="metric-tx" type="button">Transacciones</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <svg id="trend" viewBox="0 0 900 330" role="img" aria-label="Tendencia semanal"></svg>
+          <div id="trend-tooltip" class="tooltip"></div>
+        </div>
+        <details class="logic">
+          <summary>Explicación técnica y consulta usada</summary>
+          <p>La gráfica agrupa por semana y separa por año. Cada transacción completada suma; cada devolución resta. El control superior permite alternar entre ventas netas y transacciones.</p>
+          <pre><code>SELECT
+  DATE(t.transaction_date, '-' || ((CAST(strftime('%w', t.transaction_date) AS INTEGER) + 6) % 7) || ' days') AS semana,
+  strftime('%Y', t.transaction_date) AS año,
+  SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+  COUNT(DISTINCT t.transaction_id) AS transacciones
+FROM transactions t
+JOIN stores s ON s.store_id = t.store_id
+WHERE DATE(t.transaction_date) BETWEEN DATE('__DEFAULT_START__') AND DATE('__DEFAULT_END__')
+GROUP BY semana, año
+ORDER BY semana, año;</code></pre>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Ranking de tiendas</h2>
+            <p class="panel-note">Haz clic en una tienda para ver su detalle operativo.</p>
+          </div>
+          <button class="btn" id="export-ranking" type="button">Exportar ranking</button>
+        </div>
+        <div class="table-tools">
+          <input id="table-search" type="search" placeholder="Filtrar tabla por tienda, país o formato">
+          <span class="chip" id="ranking-count">0 tiendas</span>
+          <span class="chip" id="ranking-mode">Todas</span>
+        </div>
+        <div class="table-wrap"><table id="ranking"></table></div>
+        <details class="logic">
+          <summary>Explicación técnica y consulta usada</summary>
+          <p>El ranking agrega ventas por tienda, calcula ticket promedio y ventas netas por metro cuadrado. Luego compara cada tienda contra el percentil 25 de su propio formato para marcar bajo rendimiento.</p>
+          <pre><code>WITH ventas_tienda AS (
+  SELECT
+    s.store_id,
+    s.store_name,
+    s.format,
+    s.size_sqm,
+    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+    COUNT(DISTINCT t.transaction_id) AS transacciones
+  FROM transactions t
+  JOIN stores s ON s.store_id = t.store_id
+  WHERE DATE(t.transaction_date) BETWEEN DATE('__DEFAULT_START__') AND DATE('__DEFAULT_END__')
+  GROUP BY s.store_id, s.store_name, s.format, s.size_sqm
+),
+scored AS (
+  SELECT
+    *,
+    ventas_netas / NULLIF(size_sqm, 0) AS ventas_netas_por_metro_cuadrado,
+    ventas_netas / NULLIF(transacciones, 0) AS ticket_promedio
+  FROM ventas_tienda
+)
+SELECT *
+FROM scored
+ORDER BY ventas_netas_por_metro_cuadrado DESC;</code></pre>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Retención de clientes de lealtad por cohorte</h2>
+            <p class="panel-note">Color más intenso significa mayor porcentaje de clientes que regresan.</p>
+          </div>
+        </div>
+        <div id="retention" class="heat-grid"></div>
+        <details class="logic">
+          <summary>Explicación técnica y consulta usada</summary>
+          <p>Una cohorte es el mes de primera compra del cliente identificado. La retención del mes 1, 2, 3 o 6 es el porcentaje de clientes de esa cohorte que vuelve a comprar en ese mes relativo.</p>
+          <pre><code>WITH ventas_lealtad AS (
+  SELECT
+    customer_id,
+    DATE(transaction_date, 'start of month') AS mes_compra,
+    total_amount
+  FROM transactions
+  WHERE loyalty_card = 1 AND customer_id IS NOT NULL AND status = 'COMPLETED'
+),
+primera_compra AS (
+  SELECT customer_id, MIN(mes_compra) AS mes_cohorte
+  FROM ventas_lealtad
+  GROUP BY customer_id
+)
+SELECT mes_cohorte, COUNT(DISTINCT customer_id) AS clientes
+FROM primera_compra
+GROUP BY mes_cohorte
+ORDER BY mes_cohorte;</code></pre>
+        </details>
+      </section>
+    </div>
+
+    <div>
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Participación por formato</h2>
+            <p class="panel-note">Haz clic en un formato para filtrar el dashboard.</p>
+          </div>
+        </div>
+        <div id="format-bars" class="format-bars"></div>
+        <details class="logic">
+          <summary>Explicación técnica y consulta usada</summary>
+          <p>Este componente resume ventas netas por formato sobre los filtros activos. La barra representa participación relativa frente al formato con mayor venta.</p>
+          <pre><code>SELECT
+  s.format AS formato,
+  SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+  COUNT(DISTINCT t.transaction_id) AS transacciones
+FROM transactions t
+JOIN stores s ON s.store_id = t.store_id
+WHERE DATE(t.transaction_date) BETWEEN DATE('__DEFAULT_START__') AND DATE('__DEFAULT_END__')
+GROUP BY s.format
+ORDER BY ventas_netas DESC;</code></pre>
+        </details>
+      </section>
+
+      <section class="panel" id="store-detail">
+        <div class="store-title">
+          <div>
+            <h3 id="store-name">Selecciona una tienda</h3>
+            <p id="store-context">El detalle se actualiza al hacer clic en el ranking.</p>
+          </div>
+          <span id="store-status" class="status ok">En rango</span>
+        </div>
+        <div class="metric-list">
+          <div class="metric-line"><span>Ventas netas</span><b id="store-gmv">$0</b><div class="mini-track"><i id="store-gmv-bar"></i></div></div>
+          <div class="metric-line"><span>Ventas netas por metro cuadrado</span><b id="store-sqm">$0</b><div class="mini-track"><i id="store-sqm-bar"></i></div></div>
+          <div class="metric-line"><span>Ticket promedio</span><b id="store-ticket">$0</b><div class="mini-track"><i id="store-ticket-bar"></i></div></div>
+          <div class="metric-line"><span>Transacciones</span><b id="store-tx">0</b><div class="mini-track"><i id="store-tx-bar"></i></div></div>
+        </div>
+        <details class="logic">
+          <summary>Explicación técnica del detalle</summary>
+          <p>El panel reutiliza el mismo agregado del ranking y muestra la tienda seleccionada contra el máximo visible. Las barras pequeñas no son otra métrica: solo normalizan cada indicador contra la tienda con mayor valor visible.</p>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Quiebres activos de venta</h2>
+            <p class="panel-note">Priorizados por ventas estimadas pérdidas.</p>
+          </div>
+        </div>
+        <div class="stock-controls">
+          <select id="stock-category"><option value="">Todas las categorías</option></select>
+          <select id="stock-scope"><option value="filters">Filtros actuales</option><option value="store">Tienda seleccionada</option></select>
+        </div>
+        <div id="stock" class="stock-list"></div>
+        <details class="logic">
+          <summary>Explicación técnica y consulta usada</summary>
+          <p>Un posible quiebre aparece cuando un producto que históricamente se vendía en una tienda deja de venderse por tres o más días. La pérdida estimada usa el promedio diario de ventas de los 14 días previos multiplicado por la duración del período sin venta.</p>
+          <pre><code>WITH ventas_diarias AS (
+  SELECT
+    t.store_id,
+    ti.item_id,
+    DATE(t.transaction_date) AS fecha,
+    SUM(ti.quantity * ti.unit_price) AS ventas
+  FROM transaction_items ti
+  JOIN transactions t ON t.transaction_id = ti.transaction_id
+  WHERE t.status = 'COMPLETED'
+  GROUP BY t.store_id, ti.item_id, DATE(t.transaction_date)
+)
+SELECT
+  store_id,
+  item_id,
+  MAX(fecha) AS ultima_fecha_con_venta,
+  CAST(JULIANDAY('2025-06-30') - JULIANDAY(MAX(fecha)) AS INTEGER) AS días_sin_venta
+FROM ventas_diarias
+GROUP BY store_id, item_id
+HAVING JULIANDAY('2025-06-30') - JULIANDAY(MAX(fecha)) >= 3;</code></pre>
+        </details>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const DATA = __PAYLOAD__;
+const DEFAULT_START = '__DEFAULT_START__';
+const DEFAULT_END = '__DEFAULT_END__';
+const byId = id => document.getElementById(id);
+const fmtMoney = value => '$' + Math.round(value || 0).toLocaleString('en-US');
+const fmtNumber = value => Math.round(value || 0).toLocaleString('en-US');
+const fmtPct = value => (value >= 0 ? '+' : '') + value.toFixed(1) + '% comparado con período anterior';
+const formatColors = { HIPERMERCADO:'#176B87', SUPERMERCADO:'#3E8E7E', DESCUENTO:'#D97941', EXPRESS:'#7B4B94' };
+const countryLabels = { CR:'Costa Rica', GT:'Guatemala', HN:'Honduras', SV:'El Salvador', NI:'Nicaragua' };
+let selectedStoreId = null;
+let chartMetric = 'gmv';
+let currentRanking = [];
+
+function countryName(code) {
+  return countryLabels[code] || code;
+}
+
+function uniqueFromDaily(field) {
+  return [...new Set(DATA.daily.map(d => d[field]).filter(Boolean))].sort();
+}
+
+function uniqueFromStock(field) {
+  return [...new Set(DATA.stock.map(d => d[field]).filter(Boolean))].sort();
+}
+
+function addOptions(id, values) {
+  const el = byId(id);
+  values.forEach(value => {
+    const label = id === 'country' ? countryName(value) : value;
+    el.insertAdjacentHTML('beforeend', `<option value="${value}">${label}</option>`);
+  });
+}
+
+function activeFilters() {
+  return {
+    country: byId('country').value,
+    format: byId('format').value,
+    region: byId('region').value,
+    start: byId('start').value,
+    end: byId('end').value,
+    alert: byId('alert').value,
+    sort: byId('sort').value,
+    search: byId('store-search').value.trim().toLowerCase(),
+    tableSearch: byId('table-search').value.trim().toLowerCase()
+  };
+}
+
+function filtered(start = null, end = null) {
+  const f = activeFilters();
+  const startDate = start || f.start;
+  const endDate = end || f.end;
+  return DATA.daily.filter(d =>
+    (!f.country || d.country === f.country) &&
+    (!f.format || d.format === f.format) &&
+    (!f.region || d.region === f.region) &&
+    (!f.search || d.store_name.toLowerCase().includes(f.search) || d.store_id.toLowerCase().includes(f.search)) &&
+    d.date >= startDate &&
+    d.date <= endDate
+  );
+}
+
+function summarize(rows) {
+  const gmv = rows.reduce((acc, d) => acc + d.gmv, 0);
+  const tx = rows.reduce((acc, d) => acc + d.tx, 0);
+  const stores = [...new Map(rows.map(d => [d.store_id, d])).values()];
+  const size = stores.reduce((acc, d) => acc + d.size_sqm, 0);
+  const days = new Set(rows.map(d => d.date)).size;
+  return { gmv, tx, stores:stores.length, size, days, ticket:tx ? gmv / tx : 0, sqm:size ? gmv / size : 0 };
+}
+
+function delta(current, previous) {
+  if (!previous) return 'Sin período anterior comparable';
+  return fmtPct((current / previous - 1) * 100);
+}
+
+function setDelta(id, value) {
+  const el = byId(id);
+  el.textContent = value;
+  el.className = 'delta ' + (value.startsWith('+') ? 'up' : value.startsWith('-') ? 'down' : '');
+}
+
+function buildStoreRows(rows) {
+  const map = new Map();
+  rows.forEach(d => {
+    if (!map.has(d.store_id)) map.set(d.store_id, { ...d, gmv:0, tx:0, days:new Set() });
+    const item = map.get(d.store_id);
+    item.gmv += d.gmv;
+    item.tx += d.tx;
+    item.days.add(d.date);
+  });
+  const arr = [...map.values()].map(d => ({ ...d, days:d.days.size, gmv_sqm:d.size_sqm ? d.gmv / d.size_sqm : 0, ticket:d.tx ? d.gmv / d.tx : 0 }));
+  const byFormat = {};
+  arr.forEach(d => { (byFormat[d.format] ||= []).push(d.gmv_sqm); });
+  Object.values(byFormat).forEach(values => values.sort((a,b) => a - b));
+  arr.forEach(d => {
+    const values = byFormat[d.format] || [];
+    d.p25 = values[Math.floor((values.length - 1) * 0.25)] || 0;
+    d.low = d.gmv_sqm < d.p25;
+  });
+  return arr;
+}
+
+function applyRankingFilters(arr) {
+  const f = activeFilters();
+  let out = arr;
+  if (f.alert === 'low') out = out.filter(d => d.low);
+  const search = f.tableSearch;
+  if (search) {
+    out = out.filter(d =>
+      d.store_name.toLowerCase().includes(search) ||
+      d.store_id.toLowerCase().includes(search) ||
+      d.country.toLowerCase().includes(search) ||
+      countryName(d.country).toLowerCase().includes(search) ||
+      d.format.toLowerCase().includes(search)
+    );
+  }
+  out.sort((a,b) => (b[f.sort] || 0) - (a[f.sort] || 0));
+  return out;
+}
+
+function updateBars(summary, previous) {
+  const set = (id, current, old) => {
+    const ratio = old ? Math.min(Math.abs(current / old) * 50, 100) : 100;
+    byId(id).style.width = ratio + '%';
+  };
+  set('bar-gmv', summary.gmv, previous.gmv);
+  set('bar-tx', summary.tx, previous.tx);
+  set('bar-ticket', summary.ticket, previous.ticket);
+  set('bar-sqm', summary.sqm, previous.sqm);
+}
+
+function updateKpis(rows) {
+  const summary = summarize(rows);
+  const start = new Date(byId('start').value + 'T00:00:00');
+  const end = new Date(byId('end').value + 'T00:00:00');
+  const days = Math.max(1, Math.round((end - start) / 86400000) + 1);
+  const prevEnd = new Date(start);
+  prevEnd.setDate(start.getDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevEnd.getDate() - days + 1);
+  const previous = summarize(filtered(prevStart.toISOString().slice(0,10), prevEnd.toISOString().slice(0,10)));
+  byId('kpi-gmv').textContent = fmtMoney(summary.gmv);
+  byId('kpi-tx').textContent = fmtNumber(summary.tx);
+  byId('kpi-ticket').textContent = fmtMoney(summary.ticket);
+  byId('kpi-sqm').textContent = fmtMoney(summary.sqm);
+  byId('kpi-stores').textContent = summary.stores + ' tiendas';
+  byId('kpi-days').textContent = summary.days + ' días';
+  setDelta('delta-gmv', delta(summary.gmv, previous.gmv));
+  setDelta('delta-tx', delta(summary.tx, previous.tx));
+  setDelta('delta-ticket', delta(summary.ticket, previous.ticket));
+  setDelta('delta-sqm', delta(summary.sqm, previous.sqm));
+  updateBars(summary, previous);
+}
+
+function drawTrend(rows) {
+  const svg = byId('trend');
+  const tooltip = byId('trend-tooltip');
+  svg.innerHTML = '';
+  const weekly = new Map();
+  rows.forEach(d => {
+    const date = new Date(d.date + 'T00:00:00');
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    const year = String(date.getFullYear());
+    const week = monday.toISOString().slice(5,10);
+    const key = year + '|' + week;
+    weekly.set(key, (weekly.get(key) || 0) + (chartMetric === 'gmv' ? d.gmv : d.tx));
+  });
+  const grouped = {};
+  [...weekly.entries()].forEach(([key, value]) => {
+    const [year, week] = key.split('|');
+    (grouped[year] ||= []).push({ year, week, value });
+  });
+  const years = Object.keys(grouped).sort();
+  if (!years.length) {
+    svg.innerHTML = '<text x="450" y="160" text-anchor="middle" fill="#667085">Sin datos para los filtros actuales</text>';
+    return;
+  }
+  const weeks = [...new Set([].concat(...years.map(y => grouped[y].map(p => p.week))))].sort();
+  const allValues = [].concat(...years.map(y => grouped[y].map(p => p.value)));
+  const maxValue = Math.max(1, ...allValues) * 1.1;
+  const x = week => 58 + weeks.indexOf(week) / Math.max(1, weeks.length - 1) * 785;
+  const y = value => 275 - value / maxValue * 220;
+  for (let i = 0; i < 5; i++) {
+    const yy = 55 + i * 55;
+    svg.insertAdjacentHTML('beforeend', `<line x1="58" y1="${yy}" x2="846" y2="${yy}" stroke="#e5e9ee"/>`);
+  }
+  svg.insertAdjacentHTML('beforeend', '<line x1="58" y1="275" x2="846" y2="275" stroke="#cfd6dd"/>');
+  years.forEach((year, index) => {
+    const points = grouped[year].sort((a,b) => a.week.localeCompare(b.week));
+    const color = year === '2025' ? '#176B87' : '#D97941';
+    const path = points.map(p => `${x(p.week)},${y(p.value)}`).join(' ');
+    svg.insertAdjacentHTML('beforeend', `<polyline points="${path}" fill="none" stroke="${color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`);
+    points.forEach(p => {
+      const cx = x(p.week);
+      const cy = y(p.value);
+      svg.insertAdjacentHTML('beforeend', `<circle cx="${cx}" cy="${cy}" r="4.5" fill="${color}" data-label="${year} semana ${p.week}" data-value="${chartMetric === 'gmv' ? fmtMoney(p.value) : fmtNumber(p.value)}"><title>${year} semana ${p.week}: ${chartMetric === 'gmv' ? fmtMoney(p.value) : fmtNumber(p.value)}</title></circle>`);
+    });
+    svg.insertAdjacentHTML('beforeend', `<text x="${70 + index * 92}" y="312" fill="${color}" font-size="13" font-weight="700">${year}</text>`);
+  });
+  svg.querySelectorAll('circle').forEach(circle => {
+    circle.addEventListener('mousemove', event => {
+      tooltip.style.display = 'block';
+      tooltip.style.left = event.offsetX + 'px';
+      tooltip.style.top = event.offsetY + 'px';
+      tooltip.textContent = circle.dataset.label + ' | ' + circle.dataset.value;
+    });
+    circle.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  });
+}
+
+function renderFormatBars(rows) {
+  const grouped = new Map();
+  rows.forEach(d => {
+    if (!grouped.has(d.format)) grouped.set(d.format, { format:d.format, gmv:0, tx:0 });
+    const item = grouped.get(d.format);
+    item.gmv += d.gmv;
+    item.tx += d.tx;
+  });
+  const items = [...grouped.values()].sort((a,b) => b.gmv - a.gmv);
+  const max = Math.max(1, ...items.map(d => d.gmv));
+  byId('format-bars').innerHTML = items.map(d => {
+    const active = byId('format').value === d.format ? ' active' : '';
+    const color = formatColors[d.format] || '#667085';
+    return `<div class="format-row${active}" data-format="${d.format}"><div class="format-row-top"><span>${d.format}</span><span>${fmtMoney(d.gmv)}</span></div><div class="format-track"><div class="format-fill" style="width:${Math.max(4, d.gmv / max * 100)}%; background:${color}"></div></div><div class="panel-note">${fmtNumber(d.tx)} transacciones</div></div>`;
+  }).join('') || '<div class="empty">Sin formatos para los filtros activos.</div>';
+  byId('format-bars').querySelectorAll('.format-row').forEach(row => {
+    row.addEventListener('click', () => {
+      byId('format').value = byId('format').value === row.dataset.format ? '' : row.dataset.format;
+      update();
+    });
+  });
+}
+
+function renderRanking(rows) {
+  const base = buildStoreRows(rows);
+  currentRanking = applyRankingFilters(base);
+  if (!selectedStoreId && currentRanking.length) selectedStoreId = currentRanking[0].store_id;
+  byId('ranking-count').textContent = currentRanking.length + ' tiendas';
+  byId('ranking-mode').textContent = byId('alert').value === 'low' ? 'Solo bajo rendimiento' : 'Todas';
+  const body = currentRanking.slice(0, 80).map((d, index) => `
+    <tr class="${d.low ? 'low' : ''} ${d.store_id === selectedStoreId ? 'selected' : ''}" data-store="${d.store_id}">
+      <td>${index + 1}</td>
+      <td><b>${d.store_name}</b><br><span class="panel-note">${d.store_id}</span></td>
+      <td>${countryName(d.country)}</td>
+      <td>${d.format}</td>
+      <td>${fmtMoney(d.gmv)}</td>
+      <td>${fmtMoney(d.gmv_sqm)}</td>
+      <td>${fmtMoney(d.ticket)}</td>
+      <td><span class="status ${d.low ? 'low' : 'ok'}">${d.low ? 'Bajo rendimiento' : 'En rango'}</span></td>
+    </tr>
+  `).join('');
+  byId('ranking').innerHTML = `<thead><tr><th>#</th><th>Tienda</th><th>País</th><th>Formato</th><th>Ventas netas</th><th>Ventas netas por metro cuadrado</th><th>Ticket promedio</th><th>Estado</th></tr></thead><tbody>${body}</tbody>`;
+  byId('ranking').querySelectorAll('tr[data-store]').forEach(row => {
+    row.addEventListener('click', () => {
+      selectedStoreId = row.dataset.store;
+      update();
+    });
+  });
+}
+
+function renderStoreDetail() {
+  const selected = currentRanking.find(d => d.store_id === selectedStoreId) || currentRanking[0];
+  if (!selected) {
+    byId('store-name').textContent = 'Sin tienda visible';
+    byId('store-context').textContent = 'Ajusta los filtros para recuperar resultados.';
+    ['store-gmv','store-sqm','store-ticket','store-tx'].forEach(id => byId(id).textContent = '0');
+    return;
+  }
+  selectedStoreId = selected.store_id;
+  const max = metric => Math.max(1, ...currentRanking.map(d => d[metric] || 0));
+  byId('store-name').textContent = selected.store_name;
+  byId('store-context').textContent = `${selected.store_id} | ${countryName(selected.country)} | ${selected.format} | ${selected.region}`;
+  byId('store-status').textContent = selected.low ? 'Bajo rendimiento' : 'En rango';
+  byId('store-status').className = 'status ' + (selected.low ? 'low' : 'ok');
+  byId('store-gmv').textContent = fmtMoney(selected.gmv);
+  byId('store-sqm').textContent = fmtMoney(selected.gmv_sqm);
+  byId('store-ticket').textContent = fmtMoney(selected.ticket);
+  byId('store-tx').textContent = fmtNumber(selected.tx);
+  byId('store-gmv-bar').style.width = Math.min(100, selected.gmv / max('gmv') * 100) + '%';
+  byId('store-sqm-bar').style.width = Math.min(100, selected.gmv_sqm / max('gmv_sqm') * 100) + '%';
+  byId('store-ticket-bar').style.width = Math.min(100, selected.ticket / max('ticket') * 100) + '%';
+  byId('store-tx-bar').style.width = Math.min(100, selected.tx / max('tx') * 100) + '%';
+}
+
+function renderRetention() {
+  const headers = ['Cohorte','Mes 0','Mes 1','Mes 2','Mes 3','Mes 6'];
+  const keys = ['m0','m1','m2','m3','m6'];
+  let html = headers.map(h => `<div class="heat-cell heat-head">${h}</div>`).join('');
+  DATA.retention.forEach(row => {
+    html += `<div class="heat-cell heat-head">${row.cohort}</div>`;
+    keys.forEach(key => {
+      const value = row[key];
+      const alpha = value == null ? 0 : Math.max(.08, Math.min(.85, value / 115));
+      html += `<div class="heat-cell" title="${row.cohort} ${key}: ${value == null ? 'sin dato' : value + '%'}" style="background:rgba(62,142,126,${alpha})">${value == null ? '' : value + '%'}</div>`;
+    });
+  });
+  byId('retention').innerHTML = html;
+}
+
+function renderStock() {
+  const f = activeFilters();
+  const category = byId('stock-category').value;
+  const scope = byId('stock-scope').value;
+  let rows = DATA.stock.filter(d =>
+    (!f.country || d.country === f.country) &&
+    (!f.format || d.format === f.format) &&
+    (!f.region || d.region === f.region) &&
+    (!category || d.category === category)
+  );
+  if (scope === 'store' && selectedStoreId) rows = rows.filter(d => d.store_id === selectedStoreId);
+  byId('insight-stock').textContent = fmtNumber(rows.length);
+  byId('stock').innerHTML = rows.slice(0, 24).map(d => `
+    <div class="stock-item">
+      <strong>${d.item_name}</strong>
+      <span>${d.store_name} | ${countryName(d.country)} | ${d.category}</span>
+      <div class="stock-meta"><span>${d.gap_days} días sin venta</span><span>${fmtMoney(d.estimated_lost_gmv)}</span></div>
+    </div>
+  `).join('') || '<div class="empty">No hay quiebres activos con los filtros actuales.</div>';
+}
+
+function renderFilterSummary(rows, rankingRows) {
+  const chips = [];
+  const f = activeFilters();
+  if (f.country) chips.push('País: ' + countryName(f.country));
+  if (f.format) chips.push('Formato: ' + f.format);
+  if (f.region) chips.push('Región: ' + f.region);
+  if (f.alert) chips.push('Bajo rendimiento');
+  if (f.search) chips.push('Búsqueda: ' + byId('store-search').value);
+  if (f.tableSearch) chips.push('Tabla: ' + byId('table-search').value);
+  byId('active-chips').innerHTML = chips.map(label => `<span class="chip">${label}</span>`).join('') || '<span class="chip">Sin filtros adicionales</span>';
+  byId('period-label').textContent = `${byId('start').value} a ${byId('end').value}`;
+  byId('insight-stores').textContent = fmtNumber(new Set(rows.map(d => d.store_id)).size);
+  byId('insight-low').textContent = fmtNumber(rankingRows.filter(d => d.low).length);
+  byId('insight-selected').textContent = selectedStoreId || 'Ninguna';
+}
+
+function exportRanking() {
+  const headers = ['id_tienda','nombre_tienda','país','formato','región','ventas_netas','ventas_netas_por_metro_cuadrado','ticket_promedio','transacciones','estado'];
+  const csv = [headers.join(',')].concat(currentRanking.map(d => [
+    d.store_id,
+    `"${d.store_name}"`,
+    countryName(d.country),
+    d.format,
+    d.region,
+    Math.round(d.gmv * 100) / 100,
+    Math.round(d.gmv_sqm * 100) / 100,
+    Math.round(d.ticket * 100) / 100,
+    d.tx,
+    d.low ? 'BAJO_RENDIMIENTO' : 'EN_RANGO'
+  ].join(','))).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'ranking_tiendas_dashboard.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function setMetric(metric) {
+  chartMetric = metric;
+  byId('metric-gmv').classList.toggle('active', metric === 'gmv');
+  byId('metric-tx').classList.toggle('active', metric === 'tx');
+  update();
+}
+
+function update() {
+  const rows = filtered();
+  updateKpis(rows);
+  drawTrend(rows);
+  renderFormatBars(rows);
+  renderRanking(rows);
+  renderStoreDetail();
+  renderRetention();
+  renderStock();
+  renderFilterSummary(rows, currentRanking);
+}
+
+addOptions('country', uniqueFromDaily('country'));
+addOptions('format', uniqueFromDaily('format'));
+addOptions('region', uniqueFromDaily('region'));
+addOptions('stock-category', uniqueFromStock('category'));
+['country','format','region','start','end','alert','sort','stock-category','stock-scope'].forEach(id => byId(id).addEventListener('change', update));
+['store-search','table-search'].forEach(id => byId(id).addEventListener('input', update));
+byId('metric-gmv').addEventListener('click', () => setMetric('gmv'));
+byId('metric-tx').addEventListener('click', () => setMetric('tx'));
+byId('export-ranking').addEventListener('click', exportRanking);
+byId('full-period').addEventListener('click', () => { byId('start').value = DEFAULT_START; byId('end').value = DEFAULT_END; update(); });
+byId('last-90').addEventListener('click', () => {
+  const end = new Date(DEFAULT_END + 'T00:00:00');
+  const start = new Date(end);
+  start.setDate(end.getDate() - 89);
+  byId('start').value = start.toISOString().slice(0,10);
+  byId('end').value = DEFAULT_END;
+  update();
+});
+byId('reset').addEventListener('click', () => {
+  ['country','format','region','alert','sort','store-search','table-search','stock-category'].forEach(id => {
+    const el = byId(id);
+    el.value = id === 'sort' ? 'gmv_sqm' : '';
+  });
+  byId('stock-scope').value = 'filters';
+  byId('start').value = DEFAULT_START;
+  byId('end').value = DEFAULT_END;
+  selectedStoreId = null;
+  update();
+});
+update();
+</script>
+</body>
+</html>
