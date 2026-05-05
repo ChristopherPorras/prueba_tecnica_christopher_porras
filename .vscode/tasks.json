@@ -2,9 +2,69 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Regenerar entregables",
+      "label": "SQLite: crear base local",
       "type": "shell",
-      "command": "python scripts/generate_all.py",
+      "command": "python",
+      "args": [
+        "scripts/create_sqlite_db.py"
+      ],
+      "windows": {
+        "command": "py",
+        "args": [
+          "scripts\\create_sqlite_db.py"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "SQLite: ejecutar Bloque 1 y crear tablas",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "scripts/run_sqlite_block1.py",
+        "--preview",
+        "5"
+      ],
+      "windows": {
+        "command": "py",
+        "args": [
+          "scripts\\run_sqlite_block1.py",
+          "--preview",
+          "5"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "SQLite: listar tablas",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "scripts/query_sqlite.py",
+        "--tables"
+      ],
+      "windows": {
+        "command": "py",
+        "args": [
+          "scripts\\query_sqlite.py",
+          "--tables"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Proyecto: regenerar entregables",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "scripts/generate_all.py"
+      ],
+      "windows": {
+        "command": "py",
+        "args": [
+          "scripts\\generate_all.py"
+        ]
+      },
       "group": "build",
       "problemMatcher": []
     }

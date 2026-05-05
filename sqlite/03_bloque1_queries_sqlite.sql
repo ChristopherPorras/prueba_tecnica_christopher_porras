@@ -1,6 +1,19 @@
 -- Bloque 1 - SQL avanzado adaptado a SQLite.
 -- Este archivo crea tablas de resultado para revisarlas en SQLite Viewer.
+--
+-- Importante en VS Code:
+-- Estas consultas son dialecto SQLite, no SQL Server. Si VS Code muestra errores
+-- con "owner: mssql", significa que la extension MSSQL esta validando el archivo
+-- como T-SQL. Ejecuta el Bloque 1 con:
+--   py scripts\run_sqlite_block1.py --preview 5
+-- o abre la base data/retail_prueba_tecnica.sqlite con SQLite Viewer.
 
+-- Query 1 - Ventas comparables por tienda.
+-- Explicacion:
+-- Compara ventas netas del primer semestre 2025 contra el primer semestre 2024.
+-- Primero estandariza devoluciones como ventas negativas, luego conserva solo
+-- tiendas abiertas desde el inicio del periodo anterior para que la comparacion
+-- sea justa. El resultado queda rankeado por crecimiento dentro de cada formato.
 DROP TABLE IF EXISTS bloque1_q1_ventas_comparables;
 CREATE TABLE bloque1_q1_ventas_comparables AS
 WITH params AS (
@@ -59,6 +72,11 @@ WHERE ventas_netas_periodo_actual <> 0
   AND ventas_netas_periodo_anterior <> 0
 ORDER BY format, ranking_crecimiento_tienda_formato;
 
+-- Query 2 - Productividad por tienda.
+-- Explicacion:
+-- Calcula ventas netas, transacciones, ticket promedio y ventas netas por metro
+-- cuadrado para el ultimo trimestre. Despues calcula el percentil 25 por formato
+-- y marca como BAJO_RENDIMIENTO las tiendas que quedan por debajo de ese umbral.
 DROP TABLE IF EXISTS bloque1_q2_productividad_tienda;
 CREATE TABLE bloque1_q2_productividad_tienda AS
 WITH store_sales AS (
@@ -123,6 +141,11 @@ FROM ordenado o
 JOIN percentil p ON p.format = o.format
 ORDER BY o.format, ranking_en_formato;
 
+-- Query 3 - Cohortes de clientes con tarjeta de lealtad.
+-- Explicacion:
+-- Identifica el primer mes de compra de cada cliente, lo usa como cohorte y mide
+-- retencion en los meses 0, 1, 2, 3 y 6. Tambien calcula ticket promedio por mes
+-- de vida de la cohorte para ver si el cliente retenido aumenta o reduce gasto.
 DROP TABLE IF EXISTS bloque1_q3_cohortes_lealtad;
 CREATE TABLE bloque1_q3_cohortes_lealtad AS
 WITH loyalty_tx AS (
@@ -197,6 +220,11 @@ FROM metrics
 GROUP BY cohort_month
 ORDER BY cohort_month;
 
+-- Query 4 - Retorno de margen bruto sobre costo por proveedor y categoria.
+-- Explicacion:
+-- Une items vendidos con productos y proveedores, calcula ventas brutas, costo,
+-- margen bruto y retorno de margen bruto sobre costo. Sirve para detectar
+-- proveedores/categorias que venden volumen, pero dejan poco retorno relativo.
 DROP TABLE IF EXISTS bloque1_q4_retorno_margen_proveedor_categoria;
 CREATE TABLE bloque1_q4_retorno_margen_proveedor_categoria AS
 WITH item_sales AS (
@@ -233,6 +261,12 @@ FROM item_sales
 GROUP BY vendor_id, vendor_name, category
 ORDER BY retorno_margen_bruto_sobre_costo ASC;
 
+-- Query 5 - Posibles quiebres operativos de stock.
+-- Explicacion:
+-- Construye un calendario diario por tienda-producto desde su primera venta hasta
+-- la fecha maxima del dataset. Luego detecta tramos de 3 o mas dias sin venta,
+-- estima venta perdida con el promedio de los 14 dias previos y prioriza los gaps
+-- con mayor impacto economico estimado.
 DROP TABLE IF EXISTS bloque1_q5_posibles_quiebres_stock;
 CREATE TABLE bloque1_q5_posibles_quiebres_stock AS
 WITH RECURSIVE
@@ -322,6 +356,11 @@ JOIN products p ON p.item_id = s.item_id
 LEFT JOIN vendors v ON v.vendor_id = p.vendor_id
 ORDER BY venta_estimada_perdida DESC;
 
+-- Query 6 - Impacto de promociones en ticket y volumen.
+-- Explicacion:
+-- Agrupa cada transaccion por categoria y separa si tuvo al menos un item en
+-- promocion. Compara ticket promedio, unidades promedio y ventas promedio para
+-- clasificar si la promocion genero mas volumen sin deteriorar el ticket.
 DROP TABLE IF EXISTS bloque1_q6_promociones_ticket_volumen;
 CREATE TABLE bloque1_q6_promociones_ticket_volumen AS
 WITH tx_category AS (

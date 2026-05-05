@@ -2,6 +2,28 @@
 
 SQLite no usa `Server name`, usuario, password ni certificado. La base es un archivo local.
 
+## Antes de empezar: error comun con MSSQL
+
+Si VS Code muestra errores como:
+
+```text
+Incorrect syntax near 'LIMIT'
+owner: mssql
+```
+
+la consulta no esta fallando en SQLite. Lo que pasa es que la extension de SQL
+Server esta validando archivos SQLite como si fueran T-SQL.
+
+Para evitarlo:
+
+- No ejecutes los archivos de la carpeta `sqlite/` con la extension MSSQL.
+- Usa `py scripts\query_sqlite.py` para ejecutar consultas.
+- Usa `py scripts\run_sqlite_block1.py --preview 5` para crear las tablas del Bloque 1.
+- Abre `data/retail_prueba_tecnica.sqlite` con SQLite Viewer para ver las tablas.
+
+El repo incluye `.vscode/settings.json` para abrir los SQL de `sqlite/` como
+texto y evitar diagnosticos falsos de MSSQL.
+
 ## 1. Crear la base
 
 Desde la carpeta del proyecto:
@@ -124,7 +146,7 @@ python scripts/run_sqlite_block1.py
 En Windows:
 
 ```powershell
-py scripts\run_sqlite_block1.py
+py scripts\run_sqlite_block1.py --preview 5
 ```
 
 El comando crea estas tablas dentro de `data/retail_prueba_tecnica.sqlite`:

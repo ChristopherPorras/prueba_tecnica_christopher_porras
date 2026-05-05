@@ -2,6 +2,22 @@
 
 SQLite no usa servidor, usuario ni password. La base es un archivo local `.sqlite`.
 
+## Si aparecen errores de MSSQL en archivos SQLite
+
+Si en VS Code ves errores como `Incorrect syntax near 'LIMIT'` con `owner: mssql`,
+no significa que la consulta este mala. Significa que la extension de SQL Server
+esta leyendo un archivo SQLite como si fuera T-SQL.
+
+Para esta prueba:
+
+- Ejecuta las consultas con `py scripts\query_sqlite.py`.
+- Ejecuta todo el Bloque 1 con `py scripts\run_sqlite_block1.py --preview 5`.
+- Abre `data/retail_prueba_tecnica.sqlite` con SQLite Viewer para ver tablas.
+- No ejecutes los archivos de `sqlite/` con la extension MSSQL.
+
+El proyecto incluye `.vscode/settings.json` para que los `.sql` dentro de
+`sqlite/` se abran como texto y no generen diagnosticos falsos de SQL Server.
+
 ## Crear la base local
 
 Desde la carpeta del repo:
@@ -65,6 +81,12 @@ En Windows:
 py scripts\run_sqlite_block1.py
 ```
 
+Con vista previa:
+
+```powershell
+py scripts\run_sqlite_block1.py --preview 5
+```
+
 Despues refresca SQLite Viewer y abre estas tablas:
 
 - `bloque1_q1_ventas_comparables`
@@ -74,7 +96,7 @@ Despues refresca SQLite Viewer y abre estas tablas:
 - `bloque1_q5_posibles_quiebres_stock`
 - `bloque1_q6_promociones_ticket_volumen`
 
-La consulta de posibles quiebres de stock es la mas pesada porque revisa dias sin venta por tienda-producto. Es normal que tarde alrededor de 30 a 60 segundos al crear la tabla.
+La consulta de posibles quiebres de stock es la mas pesada porque revisa dias sin venta por tienda-producto. Es normal que tarde mas que las demas al crear la tabla.
 
 ## Guardar cualquier resultado para SQLite Viewer
 

@@ -1,6 +1,15 @@
--- Consultas de exploracion operativa en SQLite
+-- Consultas de exploracion operativa en SQLite.
+--
+-- Importante en VS Code:
+-- Este archivo usa dialecto SQLite. Si aparece "owner: mssql" en Problems,
+-- es solo la extension de SQL Server intentando validar sintaxis SQLite.
+-- Ejecuta estas consultas con scripts/query_sqlite.py o desde una extension SQLite.
 
 -- 1. Ventas netas por formato.
+-- Explicacion:
+-- Usa la vista v_transacciones_ventas_netas para restar devoluciones y sumar
+-- ventas reales por formato. Tambien calcula volumen de transacciones y ticket
+-- promedio para explicar si un formato vende mas por trafico o por ticket.
 SELECT
   s.format AS formato,
   ROUND(SUM(v.ventas_netas), 2) AS ventas_netas,
@@ -12,6 +21,10 @@ GROUP BY s.format
 ORDER BY ventas_netas DESC;
 
 -- 2. Productividad por tienda en el ultimo trimestre.
+-- Explicacion:
+-- Agrega ventas netas por tienda para abril-junio 2025, calcula ventas netas por
+-- metro cuadrado y ticket promedio, y compara cada tienda contra el percentil 25
+-- de su propio formato. El LIMIT final solo deja las 12 tiendas mas criticas.
 WITH ventas_tienda AS (
   SELECT
     s.store_id,
@@ -70,6 +83,10 @@ ORDER BY o.ventas_netas_por_metro_cuadrado ASC
 LIMIT 12;
 
 -- 3. Calidad experimental: tiendas asignadas a ambos grupos.
+-- Explicacion:
+-- Revisa la tabla de promociones para encontrar tiendas que aparecen en CONTROL
+-- y TREATMENT. Es una validacion clave porque esas tiendas no deben entrar en la
+-- lectura principal de la prueba A/B.
 SELECT
   store_id,
   COUNT(DISTINCT variant) AS variantes_distintas,
@@ -79,6 +96,10 @@ GROUP BY store_id
 HAVING COUNT(DISTINCT variant) > 1;
 
 -- 4. Recomendacion priorizada por categoria.
+-- Explicacion:
+-- Combina peso de ventas por categoria con senales de productos-tienda sin venta
+-- reciente. La prioridad alta aparece cuando una categoria pesa mucho en ventas
+-- y ademas tiene gaps activos que pueden afectar disponibilidad.
 WITH ventas_categoria AS (
   SELECT
     p.category,

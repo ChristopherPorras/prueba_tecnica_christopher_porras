@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "**/sqlite/*.sql": "plaintext"
+  },
+  "sqltools.connections": []
+}
