@@ -1,4 +1,4 @@
-# Prueba tecnica Data Analyst - Retail Centroamerica
+# Prueba tecnica Data Analyst - Christopher Porras
 
 [![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-local-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
