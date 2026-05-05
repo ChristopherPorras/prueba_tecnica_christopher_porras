@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Milla extra - Modo entrevista</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #5f6c7b;
+      --paper: #fbfaf7;
+      --panel: #ffffff;
+      --line: #ded8cf;
+      --blue: #176b87;
+      --green: #3e8e7e;
+      --orange: #d97941;
+      --red: #c04b37;
+      --violet: #7b4b94;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.55; }
+    header { padding: 34px 28px 24px; background: #fff; border-bottom: 1px solid var(--line); }
+    main { max-width: 1180px; margin: 0 auto; padding: 26px 24px 56px; }
+    h1 { margin: 0; font-size: 34px; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 21px; }
+    h3 { margin: 0 0 8px; font-size: 16px; }
+    p { margin: 0 0 12px; }
+    .subtitle { max-width: 900px; margin-top: 10px; color: var(--muted); font-size: 16px; }
+    .grid { display: grid; gap: 14px; }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: 1fr 1fr; }
+    .card, section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+    section { margin-bottom: 18px; }
+    .metric span { color: var(--muted); font-size: 12px; display: block; min-height: 30px; }
+    .metric b { display: block; font-size: 25px; margin-top: 4px; }
+    .pill { display: inline-block; padding: 4px 8px; border-radius: 99px; background: #f2efe8; color: var(--muted); font-size: 12px; margin: 2px 4px 2px 0; }
+    .accent { border-left: 5px solid var(--orange); }
+    .script { background: #17212b; color: #f7fafc; padding: 14px; border-radius: 7px; overflow: auto; font-size: 12px; white-space: pre-wrap; }
+    .talk-track li { margin-bottom: 8px; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .step { min-height: 118px; border-top: 5px solid var(--blue); }
+    .step:nth-child(2) { border-top-color: var(--green); }
+    .step:nth-child(3) { border-top-color: var(--orange); }
+    .step:nth-child(4) { border-top-color: var(--red); }
+    .step:nth-child(5) { border-top-color: var(--violet); }
+    details { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+    summary { cursor: pointer; color: var(--blue); font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #eee8df; text-align: left; padding: 8px; vertical-align: top; }
+    th { background: #f5f1ea; color: var(--muted); }
+    a { color: var(--blue); font-weight: 700; }
+    @media (max-width: 900px) {
+      .grid.four, .grid.three, .grid.two, .flow { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Milla extra: modo entrevista en vivo</h1>
+  <p class="subtitle">Una vista para explicar la prueba como si fuera un producto analítico real: qué problema resuelve, qué decisiones tomé, qué consultas puedo ejecutar en vivo y qué haría después si esto fuera producción.</p>
+</header>
+<main>
+  <section>
+    <h2>Resumen que puedes decir en 60 segundos</h2>
+    <p class="accent card">“Construí una solución reproducible de punta a punta: audité datos, modelé un esquema estrella, escribí SQL avanzado, hice análisis exploratorio, evalué un experimento A/B y armé un dashboard operativo. Para la entrevista preparé también una versión SQL Server ejecutable desde VS Code y un guion de demo en vivo para demostrar que entiendo la lógica, no solo el resultado visual.”</p>
+  </section>
+
+  <div class="grid four">
+    <div class="card metric"><span>Ventas netas totales</span><b>$46.8M</b></div>
+    <div class="card metric"><span>Transacciones auditadas</span><b>174,880</b></div>
+    <div class="card metric"><span>Tiendas bajo percentil 25 de productividad</span><b>10</b></div>
+    <div class="card metric"><span>Tiendas con doble asignación A/B</span><b>2</b></div>
+  </div>
+
+  <section>
+    <h2>Historia ejecutiva</h2>
+    <div class="flow">
+      <div class="card step"><h3>1. Calidad</h3><p>59.8% de tickets no tiene cliente identificado, pero es consistente con lealtad falsa.</p></div>
+      <div class="card step"><h3>2. Productividad</h3><p>10 tiendas caen debajo del percentil 25 dentro de su formato.</p></div>
+      <div class="card step"><h3>3. Categorías</h3><p>Electrónica concentra 52.6% de ventas netas aunque son pocos productos.</p></div>
+      <div class="card step"><h3>4. Riesgo</h3><p>Los gaps de venta sugieren riesgo operativo fuerte en disponibilidad.</p></div>
+      <div class="card step"><h3>5. Decisión</h3><p>No escalaría la exhibición A/B sin repetir el test con grupos balanceados.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Demo en vivo sugerida</h2>
+    <ol class="talk-track">
+      <li><b>Empieza con datos:</b> abre `sql/02_validar_carga_sql_server.sql` y ejecuta conteos. Di: “primero valido que mi base representa los CSV”.</li>
+      <li><b>Muestra una regla de auditoría:</b> ejecuta la query de diferencias entre total de transacción y suma de ítems. Di: “esta decisión define qué fuente uso para cada métrica”.</li>
+      <li><b>Corre una métrica del dashboard:</b> abre `sql/04_consultas_dashboard_sql_server.sql` y ejecuta “Indicadores principales”.</li>
+      <li><b>Corre una query avanzada corta:</b> abre `sql/05_demo_en_vivo_milla_extra.sql` y ejecuta el ranking de productividad.</li>
+      <li><b>Cierra con criterio de negocio:</b> explica por qué no recomiendas rollout total del A/B test todavía.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Consultas rápidas para mostrar confianza</h2>
+    <p>Estas son consultas de 5 a 15 segundos para demostrar dominio sin depender de correr todo el pipeline.</p>
+    <div class="script">-- 1. Conteo base
+SELECT COUNT(*) AS transacciones FROM dbo.transactions;
+
+-- 2. Ventas netas
+SELECT SUM(CASE WHEN status = 'RETURNED' THEN -total_amount ELSE total_amount END) AS ventas_netas
+FROM dbo.transactions;
+
+-- 3. Calidad: asignación A/B ambigua
+SELECT store_id, COUNT(DISTINCT variant) AS variantes
+FROM dbo.store_promotions
+GROUP BY store_id
+HAVING COUNT(DISTINCT variant) > 1;</div>
+  </section>
+
+  <section>
+    <h2>Preguntas difíciles y respuestas cortas</h2>
+    <table>
+      <thead><tr><th>Pregunta</th><th>Respuesta sugerida</th></tr></thead>
+      <tbody>
+        <tr><td>¿Por qué ventas netas y no ventas brutas?</td><td>Porque retail necesita descontar devoluciones para medir desempeño real. En el SQL uso `RETURNED` como negativo.</td></tr>
+        <tr><td>¿Por qué no usaste todos los clientes para cohortes?</td><td>Porque 59.8% no tiene `customer_id`; mezclar anónimos inflaría o rompería la retención. Solo uso clientes identificados con tarjeta.</td></tr>
+        <tr><td>¿Por qué el A/B test no se debe escalar?</td><td>Porque hay dos tiendas asignadas a ambos grupos y los grupos no están balanceados por tamaño/formato. El p-value directo tampoco es significativo.</td></tr>
+        <tr><td>¿Los quiebres de stock son inventario real?</td><td>No. Son señales de ausencia de venta. Los priorizo por ventas estimadas perdidas y recomendaría cruzarlos con inventario y órdenes.</td></tr>
+        <tr><td>¿Qué harías en producción?</td><td>Crearía cargas incrementales con `MERGE`, validaciones automáticas de calidad, alertas por tienda sin datos y métricas certificadas.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Plan 30-60-90 días</h2>
+    <div class="grid three">
+      <div class="card"><h3>30 días</h3><p>Corregir datos maestros de proveedores, monitorear tiendas bajo percentil 25 y alertar tiendas sin datos diarios.</p></div>
+      <div class="card"><h3>60 días</h3><p>Repetir prueba A/B estratificada por formato y tamaño. Agregar inventario para confirmar quiebres reales.</p></div>
+      <div class="card"><h3>90 días</h3><p>Productivizar dashboard con pipeline incremental, ownership de métricas y tablero ejecutivo certificado.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Archivos que debes abrir durante la entrevista</h2>
+    <p><span class="pill">README.md</span><span class="pill">bloque5_dashboard.html</span><span class="pill">sql/02_validar_carga_sql_server.sql</span><span class="pill">sql/05_demo_en_vivo_milla_extra.sql</span><span class="pill">bloque5_presentacion_EN.pdf</span></p>
+    <details>
+      <summary>Frase final para cerrar fuerte</summary>
+      <p>“La parte técnica está resuelta, pero lo que más cuidé fue el criterio: separar datos confiables de alertas, explicar supuestos y traducir hallazgos a decisiones operativas.”</p>
+    </details>
+  </section>
+</main>
+</body>
+</html>

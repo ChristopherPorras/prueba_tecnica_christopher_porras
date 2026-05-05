@@ -9,6 +9,7 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
 5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
+6. Para la entrevista, abre `milla_extra_demo_entrevista.html` y `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`.
 
 ## Como regenerar todo
 
@@ -42,11 +43,14 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
+- `milla_extra_demo_entrevista.html`: modo entrevista con guion, historia ejecutiva y preguntas dificiles.
+- `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`: pasos para conectar SQL Server en VS Code y ejecutar queries en vivo.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
 - `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
 - `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
+- `sql/05_demo_en_vivo_milla_extra.sql`: consultas cortas para demostrar dominio tecnico en vivo.
 
 ## Uso de IA documentado
 

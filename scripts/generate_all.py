@@ -1841,6 +1841,7 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
 5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
+6. Para la entrevista, abre `milla_extra_demo_entrevista.html` y `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`.
 
 ## Como regenerar todo
 
@@ -1874,11 +1875,14 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
+- `milla_extra_demo_entrevista.html`: modo entrevista con guion, historia ejecutiva y preguntas dificiles.
+- `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`: pasos para conectar SQL Server en VS Code y ejecutar queries en vivo.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
 - `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
 - `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
+- `sql/05_demo_en_vivo_milla_extra.sql`: consultas cortas para demostrar dominio tecnico en vivo.
 
 ## Uso de IA documentado
 
@@ -1950,6 +1954,7 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 | 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
 | 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
 | 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
+| 6 | `05_demo_en_vivo_milla_extra.sql` | Consultas cortas para ejecutar durante la entrevista sin esperar procesos pesados. |
 
 ## Punto importante sobre carga de CSV
 
@@ -1966,6 +1971,15 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 3. Selecciona la base `RetailPruebaTecnica`.
 4. Ejecuta todo el archivo o selecciona una consulta especifica.
 5. Revisa los resultados en el panel inferior.
+
+## Demo recomendada para entrevista
+
+Si tienes poco tiempo, ejecuta solo:
+
+1. `02_validar_carga_sql_server.sql`
+2. `05_demo_en_vivo_milla_extra.sql`
+
+Con eso muestras conteos, ventas netas, productividad, calidad del A/B test y una recomendacion priorizada.
 
 ## Equivalencia con BigQuery
 
