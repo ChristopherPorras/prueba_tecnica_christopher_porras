@@ -1,6 +1,6 @@
 # Prueba tecnica Data Analyst - Retail Centroamerica
 
-Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, A/B test, framework de KPIs, dashboard operativo y presentacion ejecutiva en ingles.
+Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, A/B test, framework de indicadores, dashboard operativo y presentacion ejecutiva en ingles.
 
 ## Como revisar rapido
 
@@ -9,7 +9,7 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
 5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
-6. Para la entrevista, abre `milla_extra_demo_entrevista.html` y `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`.
+6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html` y `GUIA_SQL_SERVER_VSC.md`.
 
 ## Como regenerar todo
 
@@ -40,38 +40,38 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque2_decisiones.md`: decisiones de modelado, ETL/ELT y gobernanza.
 - `bloque3_analisis.html`: EDA, A/B test e interpretacion.
 - `bloque3_visualizaciones/`: visualizaciones exportadas en SVG.
-- `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
+- `bloque4_kpi_framework.md`: tabla de indicadores y metrica principal.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
-- `milla_extra_demo_entrevista.html`: modo entrevista con guion, historia ejecutiva y preguntas dificiles.
-- `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`: pasos para conectar SQL Server en VS Code y ejecutar queries en vivo.
+- `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
+- `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
 - `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
 - `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
-- `sql/05_demo_en_vivo_milla_extra.sql`: consultas cortas para demostrar dominio tecnico en vivo.
+- `sql/05_consultas_exploracion_operativa.sql`: consultas cortas de revision operativa y defensa tecnica.
 
-## Uso de IA documentado
+## Metodologia y validacion
 
-Use Codex/ChatGPT como asistente para:
+Trabajo realizado:
 
-- Extraer y resumir las instrucciones del PDF.
-- Generar el esqueleto reproducible del proyecto.
-- Escribir scripts de analisis, visualizaciones HTML/SVG y PDFs.
-- Redactar la narrativa ejecutiva inicial.
+- Lectura de instrucciones y definicion de entregables.
+- Estructura reproducible del proyecto.
+- Scripts de analisis, visualizaciones HTML/SVG y PDFs.
+- Narrativa ejecutiva y recomendaciones de negocio.
 
 Validacion manual realizada:
 
 - Conteos de filas contra los CSV originales.
 - Reglas de calidad del Bloque 0.
 - Rango de fechas, asignaciones A/B ambiguas y consistencia de llaves.
-- Formulas principales de GMV neto, GMROI, cohortes, t-test y productividad.
+- Formulas principales de ventas netas, retorno de margen bruto sobre inversion, cohortes, t-test y productividad.
 - Apertura de los archivos HTML/PDF generados.
 
 Modificaciones humanas/criterio aplicado:
 
-- Se eligio GMV neto restando devoluciones.
+- Se eligieron ventas netas restando devoluciones.
 - Se excluyeron tiendas con doble asignacion del A/B test.
 - Se trato el dashboard como HTML autocontenido porque la maquina de trabajo no puede instalar Power BI/MSSQL local.
 - Se documento que los gaps de stock son senales operativas, no inventario real.

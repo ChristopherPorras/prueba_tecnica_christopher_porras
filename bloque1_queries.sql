@@ -1,7 +1,7 @@
 -- Bloque 1 - SQL avanzado
 -- Dialecto: BigQuery Standard SQL.
 -- Supuesto: los CSV fueron cargados como tablas transactions, transaction_items, stores, products, vendors y store_promotions.
--- GMV neto: COMPLETED suma positivo y RETURNED resta.
+-- Ventas netas: COMPLETED suma positivo y RETURNED resta.
 
 -- Query 1: Ventas comparables (Comp Sales)
 DECLARE current_start DATE DEFAULT DATE '2025-01-01';
@@ -28,8 +28,8 @@ sales AS (
     s.format,
     s.store_id,
     s.store_name,
-    SUM(IF(tx.transaction_date BETWEEN current_start AND current_end, tx.net_gmv, 0)) AS gmv_current,
-    SUM(IF(tx.transaction_date BETWEEN previous_start AND previous_end, tx.net_gmv, 0)) AS gmv_previous
+    SUM(IF(tx.transaction_date BETWEEN current_start AND current_end, tx.net_gmv, 0)) AS ventas_netas_periodo_actual,
+    SUM(IF(tx.transaction_date BETWEEN previous_start AND previous_end, tx.net_gmv, 0)) AS ventas_netas_periodo_anterior
   FROM tx
   JOIN eligible_stores s USING (store_id)
   WHERE tx.transaction_date BETWEEN previous_start AND current_end
@@ -40,13 +40,13 @@ SELECT
   format,
   store_id,
   store_name,
-  gmv_current,
-  gmv_previous,
-  SAFE_DIVIDE(gmv_current, gmv_previous) - 1 AS comp_sales_growth_pct,
-  DENSE_RANK() OVER (PARTITION BY format ORDER BY SAFE_DIVIDE(gmv_current, gmv_previous) - 1 DESC) AS rank_store_growth_in_format
+  ventas_netas_periodo_actual,
+  ventas_netas_periodo_anterior,
+  SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 AS crecimiento_ventas_comparables_pct,
+  DENSE_RANK() OVER (PARTITION BY format ORDER BY SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 DESC) AS ranking_crecimiento_tienda_formato
 FROM sales
-WHERE gmv_current <> 0 AND gmv_previous <> 0
-ORDER BY format, rank_store_growth_in_format;
+WHERE ventas_netas_periodo_actual <> 0 AND ventas_netas_periodo_anterior <> 0
+ORDER BY format, ranking_crecimiento_tienda_formato;
 
 -- Query 2: Productividad por metro cuadrado
 WITH params AS (
@@ -60,8 +60,8 @@ store_sales AS (
     s.format,
     s.region,
     s.size_sqm,
-    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS gmv,
-    COUNT(DISTINCT t.transaction_id) AS transactions
+    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+    COUNT(DISTINCT t.transaction_id) AS transacciones
   FROM transactions t
   JOIN stores s USING (store_id)
   CROSS JOIN params p
@@ -71,18 +71,18 @@ store_sales AS (
 scored AS (
   SELECT
     *,
-    SAFE_DIVIDE(gmv, size_sqm) AS gmv_per_sqm,
-    SAFE_DIVIDE(transactions, size_sqm) AS transactions_per_sqm,
-    SAFE_DIVIDE(gmv, transactions) AS avg_ticket,
-    PERCENTILE_CONT(SAFE_DIVIDE(gmv, size_sqm), 0.25) OVER (PARTITION BY format) AS p25_gmv_per_sqm
+    SAFE_DIVIDE(ventas_netas, size_sqm) AS ventas_netas_por_metro_cuadrado,
+    SAFE_DIVIDE(transacciones, size_sqm) AS transacciones_por_metro_cuadrado,
+    SAFE_DIVIDE(ventas_netas, transacciones) AS ticket_promedio,
+    PERCENTILE_CONT(SAFE_DIVIDE(ventas_netas, size_sqm), 0.25) OVER (PARTITION BY format) AS percentil_25_ventas_por_metro_cuadrado
   FROM store_sales
 )
 SELECT
   *,
-  DENSE_RANK() OVER (PARTITION BY format ORDER BY gmv_per_sqm DESC) AS rank_in_format,
-  IF(gmv_per_sqm < p25_gmv_per_sqm, 'BAJO_RENDIMIENTO', 'OK') AS performance_flag
+  DENSE_RANK() OVER (PARTITION BY format ORDER BY ventas_netas_por_metro_cuadrado DESC) AS ranking_en_formato,
+  IF(ventas_netas_por_metro_cuadrado < percentil_25_ventas_por_metro_cuadrado, 'BAJO_RENDIMIENTO', 'OK') AS alerta_rendimiento
 FROM scored
-ORDER BY format, rank_in_format;
+ORDER BY format, ranking_en_formato;
 
 -- Query 3: Cohortes de clientes con tarjeta de lealtad
 WITH loyalty_tx AS (
@@ -150,7 +150,7 @@ FROM metrics
 GROUP BY cohort_month
 ORDER BY cohort_month;
 
--- Query 4: GMROI por proveedor y categoria
+-- Query 4: Retorno de margen bruto sobre inversion por proveedor y categoria
 WITH item_sales AS (
   SELECT
     p.vendor_id,
@@ -171,16 +171,16 @@ SELECT
   vendor_id,
   vendor_name,
   category,
-  SUM(gmv) AS gmv,
+  SUM(gmv) AS ventas_brutas_items,
   SUM(cost_total) AS cost_total,
-  SUM(gmv) - SUM(cost_total) AS gross_margin,
-  SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) AS gmroi,
+  SUM(gmv) - SUM(cost_total) AS margen_bruto,
+  SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) AS retorno_margen_bruto_sobre_costo,
   COUNT(DISTINCT item_id) AS active_skus,
   SAFE_DIVIDE(SUM(quantity), DATE_DIFF(MAX(sale_date), MIN(sale_date), DAY) + 1) AS sales_velocity_units_day,
-  IF(SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) < 1, 'GMROI_BAJO_1', 'OK') AS gmroi_flag
+  IF(SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) < 1, 'RETORNO_MARGEN_BAJO_1', 'OK') AS alerta_retorno_margen
 FROM item_sales
 GROUP BY 1, 2, 3
-ORDER BY gmroi ASC;
+ORDER BY retorno_margen_bruto_sobre_costo ASC;
 
 -- Query 5: Deteccion de posibles quiebres de stock
 WITH params AS (SELECT DATE '2025-06-30' AS max_date),

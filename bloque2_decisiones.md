@@ -2,7 +2,7 @@
 
 ## A. Star schema propuesto para BigQuery
 
-Grano principal: una fila por item vendido dentro de una transaccion (`fact_sales_item`). Este grano soporta GMROI, promociones, categorias, proveedores y composicion del basket. Para KPIs de tienda se agrega a `fact_store_day` como tabla derivada/materializada.
+Grano principal: una fila por item vendido dentro de una transaccion (`fact_sales_item`). Este grano soporta retorno de margen bruto sobre inversion, promociones, categorias, proveedores y composicion del basket. Para indicadores de tienda se agrega a `fact_store_day` como tabla derivada/materializada.
 
 ### Hechos
 
@@ -46,4 +46,4 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
 
 - `customer_id` debe hashearse con salt administrado por Data Platform. Analistas ven `customer_hash`, no PII directa.
 - Data owner de transacciones: Operaciones Retail/Ventas; Data Steward tecnico: Data Engineering.
-- Si dos reportes muestran GMV distinto, primero se revisa definicion certificada de GMV, luego filtros de status/returns, granularidad item vs transaccion, timezone y fecha de actualizacion. La resolucion se documenta en un changelog de metricas.
+- Si dos reportes muestran ventas netas distintas, primero se revisa la definicion certificada de ventas netas, luego filtros de status/returns, granularidad item vs transaccion, timezone y fecha de actualizacion. La resolucion se documenta en un changelog de metricas.

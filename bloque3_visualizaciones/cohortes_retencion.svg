@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="630" height="380" viewBox="0 0 630 380">
 <rect width="100%" height="100%" fill="#fbfaf7"/>
 <text x="20" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">Retencion de cohortes de lealtad</text>
-<text x="178" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M0</text>
-<text x="266" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M1</text>
-<text x="354" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M2</text>
-<text x="442" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M3</text>
-<text x="530" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M6</text>
+<text x="170" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes 0</text>
+<text x="258" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes 1</text>
+<text x="346" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes 2</text>
+<text x="434" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes 3</text>
+<text x="522" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes 6</text>
 <text x="20" y="102" font-family="Arial" font-size="12" fill="#344054">2024-01</text>
 <rect x="150" y="78" width="83" height="33" rx="3" fill="rgb(140,156,148)"/>
 <text x="166" y="101" font-family="Arial" font-size="12" fill="#1f2933">100.0%</text>

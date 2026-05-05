@@ -1,6 +1,6 @@
 # SQL Server desde VS Code
 
-Esta carpeta permite demostrar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
+Esta carpeta permite presentar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
 
 ## Requisito
 
@@ -20,7 +20,7 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 | 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
 | 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
 | 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
-| 6 | `05_demo_en_vivo_milla_extra.sql` | Consultas cortas para ejecutar durante la entrevista sin esperar procesos pesados. |
+| 6 | `05_consultas_exploracion_operativa.sql` | Consultas cortas de revision operativa y defensa tecnica. |
 
 ## Punto importante sobre carga de CSV
 
@@ -38,12 +38,12 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 4. Ejecuta todo el archivo o selecciona una consulta especifica.
 5. Revisa los resultados en el panel inferior.
 
-## Demo recomendada para entrevista
+## Ruta corta de revision
 
 Si tienes poco tiempo, ejecuta solo:
 
 1. `02_validar_carga_sql_server.sql`
-2. `05_demo_en_vivo_milla_extra.sql`
+2. `05_consultas_exploracion_operativa.sql`
 
 Con eso muestras conteos, ventas netas, productividad, calidad del A/B test y una recomendacion priorizada.
 

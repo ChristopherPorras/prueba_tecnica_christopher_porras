@@ -168,7 +168,7 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
             "total_amount vs suma de items",
             f"{len(amount_mismatches):,} transacciones ({len(amount_mismatches)/len(tx)*100:.1f}%) con diferencia > $0.01; delta maximo {money2(amount_mismatches['delta'].abs().max())}.",
             "La mayoria de diferencias son negativas: el total reportado es menor que la suma de items.",
-            "Para KPIs de GMV usar total_amount a nivel transaccion; para categoria/proveedor usar line_gmv y documentar la diferencia.",
+            "Para indicadores de ventas netas usar total_amount a nivel transaccion; para categoria/proveedor usar line_gmv y documentar la diferencia.",
         ],
         [
             "Unicidad",
@@ -228,10 +228,10 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
         "",
         "## Notas de uso en bloques siguientes",
         "",
-        "- GMV neto: `COMPLETED` suma positivo y `RETURNED` resta. Para el A/B test se usan solo transacciones completadas.",
+        "- Ventas netas: `COMPLETED` suma positivo y `RETURNED` resta. Para el A/B test se usan solo transacciones completadas.",
         "- Los analisis por proveedor mantienen productos con vendor faltante como `SIN_VENDOR` cuando aplica.",
         "- Las tiendas con doble asignacion experimental se excluyen del resultado estadistico principal.",
-        "- Los gaps de stock son senales operativas, no prueba definitiva de quiebre: se priorizan por GMV estimado perdido y velocidad previa.",
+        "- Los gaps de stock son senales operativas, no prueba definitiva de quiebre: se priorizan por ventas estimadas perdidas y velocidad previa.",
     ]
     (ROOT / "bloque0_auditoria.md").write_text("\n".join(text), encoding="utf-8")
     return {
@@ -714,7 +714,7 @@ def svg_cohort_heatmap(retention: pd.DataFrame, path: Path) -> None:
         '<text x="20" y="34" font-family="Arial" font-size="24" font-weight="700" fill="#1f2933">Retencion de cohortes de lealtad</text>',
     ]
     for j, month in enumerate(months):
-        parts.append(f'<text x="{178+j*cell_w}" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">M{month}</text>')
+        parts.append(f'<text x="{170+j*cell_w}" y="66" font-family="Arial" font-size="12" font-weight="700" fill="#344054">Mes {month}</text>')
     for i, cohort_month in enumerate(rows):
         y = 78 + i * cell_h
         parts.append(f'<text x="20" y="{y+24}" font-family="Arial" font-size="12" fill="#344054">{pd.Timestamp(cohort_month).strftime("%Y-%m")}</text>')
@@ -751,7 +751,7 @@ def write_sql_queries() -> None:
     sql = """-- Bloque 1 - SQL avanzado
 -- Dialecto: BigQuery Standard SQL.
 -- Supuesto: los CSV fueron cargados como tablas transactions, transaction_items, stores, products, vendors y store_promotions.
--- GMV neto: COMPLETED suma positivo y RETURNED resta.
+-- Ventas netas: COMPLETED suma positivo y RETURNED resta.
 
 -- Query 1: Ventas comparables (Comp Sales)
 DECLARE current_start DATE DEFAULT DATE '2025-01-01';
@@ -778,8 +778,8 @@ sales AS (
     s.format,
     s.store_id,
     s.store_name,
-    SUM(IF(tx.transaction_date BETWEEN current_start AND current_end, tx.net_gmv, 0)) AS gmv_current,
-    SUM(IF(tx.transaction_date BETWEEN previous_start AND previous_end, tx.net_gmv, 0)) AS gmv_previous
+    SUM(IF(tx.transaction_date BETWEEN current_start AND current_end, tx.net_gmv, 0)) AS ventas_netas_periodo_actual,
+    SUM(IF(tx.transaction_date BETWEEN previous_start AND previous_end, tx.net_gmv, 0)) AS ventas_netas_periodo_anterior
   FROM tx
   JOIN eligible_stores s USING (store_id)
   WHERE tx.transaction_date BETWEEN previous_start AND current_end
@@ -790,13 +790,13 @@ SELECT
   format,
   store_id,
   store_name,
-  gmv_current,
-  gmv_previous,
-  SAFE_DIVIDE(gmv_current, gmv_previous) - 1 AS comp_sales_growth_pct,
-  DENSE_RANK() OVER (PARTITION BY format ORDER BY SAFE_DIVIDE(gmv_current, gmv_previous) - 1 DESC) AS rank_store_growth_in_format
+  ventas_netas_periodo_actual,
+  ventas_netas_periodo_anterior,
+  SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 AS crecimiento_ventas_comparables_pct,
+  DENSE_RANK() OVER (PARTITION BY format ORDER BY SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 DESC) AS ranking_crecimiento_tienda_formato
 FROM sales
-WHERE gmv_current <> 0 AND gmv_previous <> 0
-ORDER BY format, rank_store_growth_in_format;
+WHERE ventas_netas_periodo_actual <> 0 AND ventas_netas_periodo_anterior <> 0
+ORDER BY format, ranking_crecimiento_tienda_formato;
 
 -- Query 2: Productividad por metro cuadrado
 WITH params AS (
@@ -810,8 +810,8 @@ store_sales AS (
     s.format,
     s.region,
     s.size_sqm,
-    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS gmv,
-    COUNT(DISTINCT t.transaction_id) AS transactions
+    SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
+    COUNT(DISTINCT t.transaction_id) AS transacciones
   FROM transactions t
   JOIN stores s USING (store_id)
   CROSS JOIN params p
@@ -821,18 +821,18 @@ store_sales AS (
 scored AS (
   SELECT
     *,
-    SAFE_DIVIDE(gmv, size_sqm) AS gmv_per_sqm,
-    SAFE_DIVIDE(transactions, size_sqm) AS transactions_per_sqm,
-    SAFE_DIVIDE(gmv, transactions) AS avg_ticket,
-    PERCENTILE_CONT(SAFE_DIVIDE(gmv, size_sqm), 0.25) OVER (PARTITION BY format) AS p25_gmv_per_sqm
+    SAFE_DIVIDE(ventas_netas, size_sqm) AS ventas_netas_por_metro_cuadrado,
+    SAFE_DIVIDE(transacciones, size_sqm) AS transacciones_por_metro_cuadrado,
+    SAFE_DIVIDE(ventas_netas, transacciones) AS ticket_promedio,
+    PERCENTILE_CONT(SAFE_DIVIDE(ventas_netas, size_sqm), 0.25) OVER (PARTITION BY format) AS percentil_25_ventas_por_metro_cuadrado
   FROM store_sales
 )
 SELECT
   *,
-  DENSE_RANK() OVER (PARTITION BY format ORDER BY gmv_per_sqm DESC) AS rank_in_format,
-  IF(gmv_per_sqm < p25_gmv_per_sqm, 'BAJO_RENDIMIENTO', 'OK') AS performance_flag
+  DENSE_RANK() OVER (PARTITION BY format ORDER BY ventas_netas_por_metro_cuadrado DESC) AS ranking_en_formato,
+  IF(ventas_netas_por_metro_cuadrado < percentil_25_ventas_por_metro_cuadrado, 'BAJO_RENDIMIENTO', 'OK') AS alerta_rendimiento
 FROM scored
-ORDER BY format, rank_in_format;
+ORDER BY format, ranking_en_formato;
 
 -- Query 3: Cohortes de clientes con tarjeta de lealtad
 WITH loyalty_tx AS (
@@ -900,7 +900,7 @@ FROM metrics
 GROUP BY cohort_month
 ORDER BY cohort_month;
 
--- Query 4: GMROI por proveedor y categoria
+-- Query 4: Retorno de margen bruto sobre inversion por proveedor y categoria
 WITH item_sales AS (
   SELECT
     p.vendor_id,
@@ -921,16 +921,16 @@ SELECT
   vendor_id,
   vendor_name,
   category,
-  SUM(gmv) AS gmv,
+  SUM(gmv) AS ventas_brutas_items,
   SUM(cost_total) AS cost_total,
-  SUM(gmv) - SUM(cost_total) AS gross_margin,
-  SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) AS gmroi,
+  SUM(gmv) - SUM(cost_total) AS margen_bruto,
+  SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) AS retorno_margen_bruto_sobre_costo,
   COUNT(DISTINCT item_id) AS active_skus,
   SAFE_DIVIDE(SUM(quantity), DATE_DIFF(MAX(sale_date), MIN(sale_date), DAY) + 1) AS sales_velocity_units_day,
-  IF(SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) < 1, 'GMROI_BAJO_1', 'OK') AS gmroi_flag
+  IF(SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) < 1, 'RETORNO_MARGEN_BAJO_1', 'OK') AS alerta_retorno_margen
 FROM item_sales
 GROUP BY 1, 2, 3
-ORDER BY gmroi ASC;
+ORDER BY retorno_margen_bruto_sobre_costo ASC;
 
 -- Query 5: Deteccion de posibles quiebres de stock
 WITH params AS (SELECT DATE '2025-06-30' AS max_date),
@@ -1043,7 +1043,7 @@ def write_model_docs() -> None:
 
 ## A. Star schema propuesto para BigQuery
 
-Grano principal: una fila por item vendido dentro de una transaccion (`fact_sales_item`). Este grano soporta GMROI, promociones, categorias, proveedores y composicion del basket. Para KPIs de tienda se agrega a `fact_store_day` como tabla derivada/materializada.
+Grano principal: una fila por item vendido dentro de una transaccion (`fact_sales_item`). Este grano soporta retorno de margen bruto sobre inversion, promociones, categorias, proveedores y composicion del basket. Para indicadores de tienda se agrega a `fact_store_day` como tabla derivada/materializada.
 
 ### Hechos
 
@@ -1087,7 +1087,7 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
 
 - `customer_id` debe hashearse con salt administrado por Data Platform. Analistas ven `customer_hash`, no PII directa.
 - Data owner de transacciones: Operaciones Retail/Ventas; Data Steward tecnico: Data Engineering.
-- Si dos reportes muestran GMV distinto, primero se revisa definicion certificada de GMV, luego filtros de status/returns, granularidad item vs transaccion, timezone y fecha de actualizacion. La resolucion se documenta en un changelog de metricas.
+- Si dos reportes muestran ventas netas distintas, primero se revisa la definicion certificada de ventas netas, luego filtros de status/returns, granularidad item vs transaccion, timezone y fecha de actualizacion. La resolucion se documenta en un changelog de metricas.
 """
     (ROOT / "bloque2_decisiones.md").write_text(md, encoding="utf-8")
     (ROOT / "bloque2_modelo.mmd").write_text(
@@ -1183,37 +1183,37 @@ def write_kpi_framework() -> None:
     rows = [
         ["Ventas netas por metro cuadrado", "Ventas netas por cada metro cuadrado de tienda", "Ventas netas / metros cuadrados de tienda", "Semanal", "fact_store_day + dim_store", ">= p50 del formato", "Metros cuadrados nulos/cero, ventas negativas sin devoluciones"],
         ["Transacciones por metro cuadrado", "Cantidad de tickets por cada metro cuadrado", "Transacciones / metros cuadrados de tienda", "Semanal", "fact_store_day", ">= p50 del formato", "Caida >30% vs media movil sin alerta de cierre"],
-        ["Ticket promedio neto", "Venta neta por transaccion", "Ventas netas / transacciones", "Diario", "fact_transaction", "+3% YoY comparable", "Total <=0 o transacciones duplicadas"],
-        ["Conversion de lealtad", "Participacion de tickets identificados", "tx con loyalty_card / tx totales", "Semanal", "fact_transaction", "45% en 6 meses", "customer_id nulo con loyalty_card TRUE"],
-        ["Retencion M1", "Clientes de cohorte que vuelven al mes 1", "clientes activos M1 / tamano cohorte", "Mensual", "fact_cohort_month", ">=70%", "Cohorte sin customer_hash o month_n negativo"],
+        ["Ticket promedio neto", "Venta neta por transaccion", "Ventas netas / transacciones", "Diario", "fact_transaction", "+3% contra el mismo periodo del ano anterior", "Total <=0 o transacciones duplicadas"],
+        ["Conversion de lealtad", "Participacion de tickets identificados", "Transacciones con loyalty_card / transacciones totales", "Semanal", "fact_transaction", "45% en 6 meses", "customer_id nulo con loyalty_card TRUE"],
+        ["Retencion mes 1", "Clientes de cohorte que vuelven al mes 1", "Clientes activos en mes 1 / tamano cohorte", "Mensual", "fact_cohort_month", ">=70%", "Cohorte sin customer_hash o month_n negativo"],
         ["Indice de quiebre", "Ventas estimadas perdidas por falta de venta", "Ventas estimadas perdidas / ventas netas", "Diario", "fact_stock_gap + fact_store_day", "<2% de ventas netas", "Gap en producto sin ventas historicas"],
         ["Retorno de margen bruto sobre inversion", "Retorno de margen sobre costo", "(Ventas - costo) / costo", "Mensual", "fact_sales_item + dim_product", ">1.5 por proveedor-categoria", "Costo nulo/cero o proveedor inexistente"],
-        ["Fill-rate proxy", "Leading indicator de abastecimiento", "1 - items activos con gap 3+ dias / items activos", "Diario", "fact_stock_gap", ">=97%", "Item marcado activo sin ventas ultimos 180 dias"],
-        ["Puntaje de salud de productividad", "KPI compuesto de productividad", "0.4 ventas netas por metro cuadrado + 0.25 transacciones por metro cuadrado + 0.2 ticket + 0.15 fill-rate normalizados", "Semanal", "Marts certificados", ">=75/100", "Alguna metrica base faltante o fuera de rango"],
+        ["Indice estimado de disponibilidad", "Indicador anticipado de abastecimiento", "1 - items activos con ausencia de venta 3+ dias / items activos", "Diario", "fact_stock_gap", ">=97%", "Item marcado activo sin ventas ultimos 180 dias"],
+        ["Puntaje de salud de productividad", "Indicador compuesto de productividad", "0.4 ventas netas por metro cuadrado + 0.25 transacciones por metro cuadrado + 0.2 ticket + 0.15 disponibilidad normalizados", "Semanal", "Marts certificados", ">=75/100", "Alguna metrica base faltante o fuera de rango"],
     ]
     text = [
-        "# Bloque 4 - Framework de KPIs para productividad de tiendas",
+        "# Bloque 4 - Framework de indicadores para productividad de tiendas",
         "",
         markdown_table(
             rows,
             [
-                "KPI",
+                "Indicador",
                 "Definicion exacta",
                 "Formula",
                 "Frecuencia",
                 "Fuente de datos",
-                "Target sugerido",
+                "Objetivo sugerido",
                 "Como detectas si el dato esta mal",
             ],
         ),
         "",
-        "## North Star Metric",
+        "## Metrica principal",
         "",
-        "**Puntaje de salud de productividad** es la North Star Metric del programa. Combina resultado financiero (ventas netas por metro cuadrado), actividad operativa (transacciones por metro cuadrado), experiencia/comportamiento de cliente (ticket y retencion via componentes) y disponibilidad (fill-rate proxy). Es mejor que usar solo ventas porque evita premiar tiendas grandes que venden mucho pero son ineficientes o tienen problemas de stock.",
+        "**Puntaje de salud de productividad** es la metrica principal del programa. Combina resultado financiero (ventas netas por metro cuadrado), actividad operativa (transacciones por metro cuadrado), experiencia/comportamiento de cliente (ticket y retencion via componentes) y disponibilidad estimada. Es mejor que usar solo ventas porque evita premiar tiendas grandes que venden mucho pero son ineficientes o tienen problemas de stock.",
         "",
-        "## Leading indicator",
+        "## Indicador anticipado",
         "",
-        "El **Fill-rate proxy** funciona como indicador predictivo: si empiezan gaps de venta en productos activos, el GMV futuro probablemente caera antes de que el cierre mensual lo muestre.",
+        "El **indice estimado de disponibilidad** funciona como indicador predictivo: si empiezan ausencias de venta en productos activos, las ventas netas futuras probablemente caeran antes de que el cierre mensual lo muestre.",
     ]
     (ROOT / "bloque4_kpi_framework.md").write_text("\n".join(text), encoding="utf-8")
 
@@ -1294,7 +1294,7 @@ def write_analysis_html(
 
   <h3>3. Cohortes de lealtad</h3>
   <img src="bloque3_visualizaciones/cohortes_retencion.svg" alt="Heatmap de cohortes">
-  <p>Las cohortes recientes de abril-junio 2024 retienen mejor en M1 ({recent:.1f}%) que las cohortes enero-marzo ({old:.1f}%), aunque las cohortes recientes son pequenas. La mayor caida promedio ocurre de M0 a M1; despues hay recuperaciones, lo que apunta a compras recurrentes no necesariamente mensuales.</p>
+  <p>Las cohortes recientes de abril-junio 2024 retienen mejor en el mes 1 ({recent:.1f}%) que las cohortes enero-marzo ({old:.1f}%), aunque las cohortes recientes son pequenas. La mayor caida promedio ocurre del mes 0 al mes 1; despues hay recuperaciones, lo que apunta a compras recurrentes no necesariamente mensuales.</p>
 
   <h3>4. Quiebres de stock e impacto</h3>
   <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="Ventas estimadas perdidas por quiebres">
@@ -1439,7 +1439,7 @@ FROM ventas_por_tienda;</code></pre>
         <svg id="trend" viewBox="0 0 900 320"></svg>
         <details class="logic">
           <summary>Explicacion tecnica y consulta usada</summary>
-          <p>La grafica agrupa las ventas netas por semana y por formato. En entrevista puedes explicarlo asi: convierto cada transaccion a venta neta, uno la tienda para saber el formato y agrego por inicio de semana.</p>
+          <p>La grafica agrupa las ventas netas por semana y por formato. La logica tecnica convierte cada transaccion a venta neta, une la tienda para obtener el formato y agrega por inicio de semana.</p>
           <pre><code>SET DATEFIRST 1; -- lunes como primer dia de la semana
 
 SELECT
@@ -1755,15 +1755,15 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
         [
             f"Best comparable store: {best['store_id']} with {best['growth_pct']:.1f}% growth.",
             f"Weakest comparable store: {worst['store_id']} with {worst['growth_pct']:.1f}% growth.",
-            f"{low_stores} stores are below the p25 of GMV per square meter inside their format.",
+            f"{low_stores} stores are below the p25 of net sales per square meter inside their format.",
         ],
     )
     slide(
         "3. Opportunities",
         [
-            f"Fix low productivity stores first. Target the bottom {low_stores} stores with a weekly action plan.",
-            f"{low_gmroi} vendor-category combinations have GMROI below 1. They cost more than the gross margin they create.",
-            f"Loyalty M1 retention in the large early cohorts is {m1_large:.1f}%. The biggest drop happens after the first purchase.",
+            f"Fix low productivity stores first. Focus on the bottom {low_stores} stores with a weekly action plan.",
+            f"{low_gmroi} vendor-category combinations have gross margin return on investment below 1. They cost more than the gross margin they create.",
+            f"Loyalty month-one retention in the large early cohorts is {m1_large:.1f}%. The biggest drop happens after the first purchase.",
         ],
     )
     slide(
@@ -1832,7 +1832,7 @@ def write_readme(dfs: dict[str, pd.DataFrame]) -> None:
     tx = dfs["transactions"]
     text = f"""# Prueba tecnica Data Analyst - Retail Centroamerica
 
-Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, A/B test, framework de KPIs, dashboard operativo y presentacion ejecutiva en ingles.
+Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, A/B test, framework de indicadores, dashboard operativo y presentacion ejecutiva en ingles.
 
 ## Como revisar rapido
 
@@ -1841,7 +1841,7 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
 5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
-6. Para la entrevista, abre `milla_extra_demo_entrevista.html` y `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`.
+6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html` y `GUIA_SQL_SERVER_VSC.md`.
 
 ## Como regenerar todo
 
@@ -1872,38 +1872,38 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque2_decisiones.md`: decisiones de modelado, ETL/ELT y gobernanza.
 - `bloque3_analisis.html`: EDA, A/B test e interpretacion.
 - `bloque3_visualizaciones/`: visualizaciones exportadas en SVG.
-- `bloque4_kpi_framework.md`: tabla de KPIs y North Star Metric.
+- `bloque4_kpi_framework.md`: tabla de indicadores y metrica principal.
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
-- `milla_extra_demo_entrevista.html`: modo entrevista con guion, historia ejecutiva y preguntas dificiles.
-- `GUIA_DEMO_EN_VIVO_SQL_SERVER.md`: pasos para conectar SQL Server en VS Code y ejecutar queries en vivo.
+- `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
+- `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
 - `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
 - `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
-- `sql/05_demo_en_vivo_milla_extra.sql`: consultas cortas para demostrar dominio tecnico en vivo.
+- `sql/05_consultas_exploracion_operativa.sql`: consultas cortas de revision operativa y defensa tecnica.
 
-## Uso de IA documentado
+## Metodologia y validacion
 
-Use Codex/ChatGPT como asistente para:
+Trabajo realizado:
 
-- Extraer y resumir las instrucciones del PDF.
-- Generar el esqueleto reproducible del proyecto.
-- Escribir scripts de analisis, visualizaciones HTML/SVG y PDFs.
-- Redactar la narrativa ejecutiva inicial.
+- Lectura de instrucciones y definicion de entregables.
+- Estructura reproducible del proyecto.
+- Scripts de analisis, visualizaciones HTML/SVG y PDFs.
+- Narrativa ejecutiva y recomendaciones de negocio.
 
 Validacion manual realizada:
 
 - Conteos de filas contra los CSV originales.
 - Reglas de calidad del Bloque 0.
 - Rango de fechas, asignaciones A/B ambiguas y consistencia de llaves.
-- Formulas principales de GMV neto, GMROI, cohortes, t-test y productividad.
+- Formulas principales de ventas netas, retorno de margen bruto sobre inversion, cohortes, t-test y productividad.
 - Apertura de los archivos HTML/PDF generados.
 
 Modificaciones humanas/criterio aplicado:
 
-- Se eligio GMV neto restando devoluciones.
+- Se eligieron ventas netas restando devoluciones.
 - Se excluyeron tiendas con doble asignacion del A/B test.
 - Se trato el dashboard como HTML autocontenido porque la maquina de trabajo no puede instalar Power BI/MSSQL local.
 - Se documento que los gaps de stock son senales operativas, no inventario real.
@@ -1934,7 +1934,7 @@ def write_support_files() -> None:
     )
     sqlserver_note = """# SQL Server desde VS Code
 
-Esta carpeta permite demostrar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
+Esta carpeta permite presentar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
 
 ## Requisito
 
@@ -1954,7 +1954,7 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 | 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
 | 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
 | 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
-| 6 | `05_demo_en_vivo_milla_extra.sql` | Consultas cortas para ejecutar durante la entrevista sin esperar procesos pesados. |
+| 6 | `05_consultas_exploracion_operativa.sql` | Consultas cortas de revision operativa y defensa tecnica. |
 
 ## Punto importante sobre carga de CSV
 
@@ -1972,12 +1972,12 @@ La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL 
 4. Ejecuta todo el archivo o selecciona una consulta especifica.
 5. Revisa los resultados en el panel inferior.
 
-## Demo recomendada para entrevista
+## Ruta corta de revision
 
 Si tienes poco tiempo, ejecuta solo:
 
 1. `02_validar_carga_sql_server.sql`
-2. `05_demo_en_vivo_milla_extra.sql`
+2. `05_consultas_exploracion_operativa.sql`
 
 Con eso muestras conteos, ventas netas, productividad, calidad del A/B test y una recomendacion priorizada.
 

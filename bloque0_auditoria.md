@@ -5,7 +5,7 @@ Periodo observado: 2024-01-01 a 2025-06-30. Dataset: 174,880 transacciones, 542,
 | Dimension | Pregunta | Evidencia | Lectura | Decision |
 | --- | --- | --- | --- | --- |
 | Completitud | Transacciones sin customer_id | 104,632 de 174,880 (59.8%) | Es consistente: no hay customer_id nulo con loyalty_card = TRUE ni customer_id informado con loyalty_card = FALSE. | Mantener customer_id nulo como comprador anonimo. En cohortes usar solo loyalty_card = TRUE. |
-| Consistencia | total_amount vs suma de items | 1,745 transacciones (1.0%) con diferencia > $0.01; delta maximo $202.68. | La mayoria de diferencias son negativas: el total reportado es menor que la suma de items. | Para KPIs de GMV usar total_amount a nivel transaccion; para categoria/proveedor usar line_gmv y documentar la diferencia. |
+| Consistencia | total_amount vs suma de items | 1,745 transacciones (1.0%) con diferencia > $0.01; delta maximo $202.68. | La mayoria de diferencias son negativas: el total reportado es menor que la suma de items. | Para indicadores de ventas netas usar total_amount a nivel transaccion; para categoria/proveedor usar line_gmv y documentar la diferencia. |
 | Unicidad | transaction_id duplicados | 0 | No se detectaron duplicados. | No se requiere deduplicacion para esta version. |
 | Validez | Montos cero/negativos y precios cero | 3 transacciones con total_amount <= 0; 231 items con unit_price = 0 sin promo. | Hay ventas completadas con monto cero y precios cero que no estan explicados por promocion. | Excluir transacciones con total_amount <= 0 de tickets promedio; marcar items con precio cero como alerta de pricing/master data. |
 | Integridad referencial | FKs contra dimensiones | 0 store_id invalidos; 0 item_id invalidos; 5 productos con vendor_id inexistente. | Cinco productos apuntan a VND_031, que no existe en vendors. | Mantener esos productos con vendor 'SIN_VENDOR' en analisis de categoria y levantar incidente de master data. |
@@ -15,7 +15,7 @@ Periodo observado: 2024-01-01 a 2025-06-30. Dataset: 174,880 transacciones, 542,
 
 ## Notas de uso en bloques siguientes
 
-- GMV neto: `COMPLETED` suma positivo y `RETURNED` resta. Para el A/B test se usan solo transacciones completadas.
+- Ventas netas: `COMPLETED` suma positivo y `RETURNED` resta. Para el A/B test se usan solo transacciones completadas.
 - Los analisis por proveedor mantienen productos con vendor faltante como `SIN_VENDOR` cuando aplica.
 - Las tiendas con doble asignacion experimental se excluyen del resultado estadistico principal.
-- Los gaps de stock son senales operativas, no prueba definitiva de quiebre: se priorizan por GMV estimado perdido y velocidad previa.
+- Los gaps de stock son senales operativas, no prueba definitiva de quiebre: se priorizan por ventas estimadas perdidas y velocidad previa.
