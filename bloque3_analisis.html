@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bloque 3 - Analisis Exploratorio y A/B Test</title>
+  <title>Bloque 3 - Analisis Exploratorio y Prueba A/B</title>
   <style>
     body { margin:0; font-family: Arial, sans-serif; color:#1f2933; background:#fbfaf7; line-height:1.5; }
     main { max-width: 1120px; margin: 0 auto; padding: 34px 24px 56px; }
@@ -40,11 +40,11 @@
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
-      <th>week_start</th>
-      <th>format</th>
-      <th>net_gmv</th>
-      <th>wow_abs</th>
-      <th>wow_pct</th>
+      <th>semana</th>
+      <th>formato</th>
+      <th>ventas_netas</th>
+      <th>cambio_semana_anterior</th>
+      <th>cambio_porcentual</th>
     </tr>
   </thead>
   <tbody>
@@ -75,11 +75,11 @@
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
-      <th>week_start</th>
-      <th>format</th>
-      <th>net_gmv</th>
-      <th>wow_abs</th>
-      <th>wow_pct</th>
+      <th>semana</th>
+      <th>formato</th>
+      <th>ventas_netas</th>
+      <th>cambio_semana_anterior</th>
+      <th>cambio_porcentual</th>
     </tr>
   </thead>
   <tbody>
@@ -106,6 +106,8 @@
     </tr>
   </tbody>
 </table>
+  <p><b>Hipotesis de picos:</b> 2024-12-02 en HIPERMERCADO se asocia a temporada navidena y compras de alto valor; 2024-07-01 en SUPERMERCADO puede venir de pago de medio ano y abastecimiento de inicio de semestre; 2025-05-05 en SUPERMERCADO coincide con una semana comercial fuerte previa a Dia de la Madre en la region.</p>
+  <p><b>Hipotesis de caidas:</b> 2024-12-30 cae por compras adelantadas de Navidad y menor trafico posterior; la caida de HIPERMERCADO en esa misma semana sugiere normalizacion despues de promociones; 2024-07-29 en HIPERMERCADO parece cierre de ciclo despues del pico de julio.</p>
 
   <h3>2. Pareto de categorias por formato</h3>
   <img src="bloque3_visualizaciones/pareto_categorias_gmv.svg" alt="Pareto de categorias">
@@ -113,10 +115,10 @@
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
-      <th>format</th>
-      <th>category</th>
-      <th>share</th>
-      <th>cum_share</th>
+      <th>formato</th>
+      <th>categoria</th>
+      <th>participacion_pct</th>
+      <th>participacion_acumulada_pct</th>
     </tr>
   </thead>
   <tbody>
@@ -201,53 +203,54 @@
 
   <h3>4. Quiebres de stock e impacto</h3>
   <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="Ventas estimadas perdidas por quiebres">
-  <p>Se detectaron 315,383 gaps de 3+ dias. No todos son quiebres reales, pero priorizados por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: $31,254,439. Proveedores con mayor impacto estimado:</p>
+  <p>Se detectaron 315,383 ausencias de venta de 3+ dias. No todas son quiebres reales, pero priorizadas por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: $31,254,439. Por la concentracion en productos con venta historica, lo interpreto principalmente como riesgo de abastecimiento/disponibilidad, no como falta de demanda. Proveedores con mayor impacto estimado:</p>
   <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
-      <th>vendor_id</th>
-      <th>vendor_name</th>
-      <th>lost_gmv</th>
+      <th>proveedor_id</th>
+      <th>proveedor</th>
+      <th>ventas_estimadas_perdidas</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>VND_020</td>
       <td>Proveedor T</td>
-      <td>4.837944e+06</td>
+      <td>$4,837,944</td>
     </tr>
     <tr>
       <td>VND_026</td>
       <td>Proveedor Z</td>
-      <td>4.439000e+06</td>
+      <td>$4,439,000</td>
     </tr>
     <tr>
       <td>VND_010</td>
       <td>Proveedor J</td>
-      <td>4.279549e+06</td>
+      <td>$4,279,549</td>
     </tr>
     <tr>
       <td>VND_003</td>
       <td>Proveedor C</td>
-      <td>4.244622e+06</td>
+      <td>$4,244,622</td>
     </tr>
     <tr>
       <td>VND_027</td>
       <td>Proveedor Z1</td>
-      <td>4.142781e+06</td>
+      <td>$4,142,781</td>
     </tr>
   </tbody>
 </table>
 
   <h3>5. Hallazgo libre</h3>
-  <div class="callout">Electronica representa 52.6% de las ventas totales aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
+  <div class="callout">Electronica representa 52.6% de las ventas totales aunque son 20 de 200 productos. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos productos mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 productos de Electronica antes de expandirlo a todo el catalogo.</div>
 
-  <h2>Parte B - Interpretacion de A/B Test</h2>
+  <h2>Parte B - Interpretacion de Prueba A/B</h2>
   <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="Prueba A/B de ventas promedio">
-  <p>Validacion: hay dos tiendas asignadas a ambos grupos (TIENDA_008, TIENDA_037), excluidas del test primario. Los grupos limpios no son perfectamente comparables: CONTROL tiene tiendas mas grandes y mas hiper/supermercados.</p>
-  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>$-2,794.97</b>, lift -17.0%, p-value 0.241, IC95% [$-7,551.11, $1,961.16]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
-  <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = $1,751.62, p-value 0.004. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
-  <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria un segundo test estratificado por formato y tamano, con costo de implementacion medido. Si el p-value fuera 0.08 y el lift cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
+  <p>Validacion: hay dos tiendas asignadas a ambos grupos (TIENDA_008, TIENDA_037), excluidas de la prueba primaria. Los grupos limpios no son perfectamente comparables: CONTROL tenia ventas semanales base de $17,545.86 contra $12,999.27 en TREATMENT, tamano promedio de 3,099.5 vs 1,812.7 metros cuadrados, y mas hipermercados/supermercados.</p>
+  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>$-2,794.97</b>, incremento relativo -17.0%, valor p 0.241, IC95% [$-7,551.11, $1,961.16]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
+  <p>Ticket y frecuencia: TREATMENT tuvo 49.7 transacciones semanales promedio contra 59.0 en CONTROL; diferencia -9.2, valor p 0.272. El ticket promedio tambien fue menor: $273.52 contra $278.65; diferencia $-5.13, valor p 0.414. Por eso el resultado directo no viene de tickets mas altos ni de mayor frecuencia.</p>
+  <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = $1,751.62, valor p 0.004. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
+  <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria una segunda prueba estratificada por formato y tamano, con costo de implementacion medido. Si el valor p fuera 0.08 y el incremento relativo cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
 </main>
 </body>
 </html>

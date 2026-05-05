@@ -337,14 +337,49 @@ WITH tx_category AS (
   JOIN products p ON p.item_id = ti.item_id
   WHERE t.status = 'COMPLETED'
   GROUP BY t.transaction_id, p.category
+),
+agregado AS (
+  SELECT
+    category,
+    tiene_item_en_promocion,
+    COUNT(DISTINCT transaction_id) AS transacciones,
+    AVG(ticket_transaccion) AS ticket_promedio,
+    AVG(unidades_categoria) AS unidades_promedio,
+    AVG(ventas_categoria) AS ventas_promedio_categoria
+  FROM tx_category
+  GROUP BY category, tiene_item_en_promocion
 )
 SELECT
   category,
-  tiene_item_en_promocion,
-  COUNT(DISTINCT transaction_id) AS transacciones,
-  ROUND(AVG(ticket_transaccion), 2) AS ticket_promedio,
-  ROUND(AVG(unidades_categoria), 4) AS unidades_promedio,
-  ROUND(AVG(ventas_categoria), 2) AS ventas_promedio_categoria
-FROM tx_category
-GROUP BY category, tiene_item_en_promocion
-ORDER BY category, tiene_item_en_promocion;
+  MAX(CASE WHEN tiene_item_en_promocion = 1 THEN transacciones END) AS transacciones_con_promocion,
+  MAX(CASE WHEN tiene_item_en_promocion = 0 THEN transacciones END) AS transacciones_sin_promocion,
+  ROUND(MAX(CASE WHEN tiene_item_en_promocion = 1 THEN ticket_promedio END), 2) AS ticket_promedio_con_promocion,
+  ROUND(MAX(CASE WHEN tiene_item_en_promocion = 0 THEN ticket_promedio END), 2) AS ticket_promedio_sin_promocion,
+  ROUND(
+    MAX(CASE WHEN tiene_item_en_promocion = 1 THEN ticket_promedio END)
+    - MAX(CASE WHEN tiene_item_en_promocion = 0 THEN ticket_promedio END),
+    2
+  ) AS diferencia_ticket_promedio,
+  ROUND(MAX(CASE WHEN tiene_item_en_promocion = 1 THEN unidades_promedio END), 4) AS unidades_promedio_con_promocion,
+  ROUND(MAX(CASE WHEN tiene_item_en_promocion = 0 THEN unidades_promedio END), 4) AS unidades_promedio_sin_promocion,
+  ROUND(
+    MAX(CASE WHEN tiene_item_en_promocion = 1 THEN unidades_promedio END)
+    - MAX(CASE WHEN tiene_item_en_promocion = 0 THEN unidades_promedio END),
+    4
+  ) AS diferencia_unidades_promedio,
+  ROUND(
+    MAX(CASE WHEN tiene_item_en_promocion = 1 THEN ventas_promedio_categoria END)
+    - MAX(CASE WHEN tiene_item_en_promocion = 0 THEN ventas_promedio_categoria END),
+    2
+  ) AS diferencia_ventas_categoria_promedio,
+  CASE
+    WHEN MAX(CASE WHEN tiene_item_en_promocion = 1 THEN unidades_promedio END) > MAX(CASE WHEN tiene_item_en_promocion = 0 THEN unidades_promedio END)
+     AND MAX(CASE WHEN tiene_item_en_promocion = 1 THEN ticket_promedio END) >= MAX(CASE WHEN tiene_item_en_promocion = 0 THEN ticket_promedio END)
+    THEN 'UPLIFT_REAL'
+    WHEN MAX(CASE WHEN tiene_item_en_promocion = 1 THEN unidades_promedio END) > MAX(CASE WHEN tiene_item_en_promocion = 0 THEN unidades_promedio END)
+    THEN 'MAS_UNIDADES_CON_MENOR_TICKET'
+    ELSE 'SIN_UPLIFT_CLARO'
+  END AS lectura_promocion
+FROM agregado
+GROUP BY category
+ORDER BY category;

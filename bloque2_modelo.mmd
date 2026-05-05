@@ -1,10 +1,116 @@
 erDiagram
+  fact_sales_item {
+    string transaction_item_id
+    string transaction_id
+    string store_key
+    string product_key
+    string customer_key_nullable
+    string promotion_key_nullable
+    integer quantity
+    float ventas_netas_item
+    float costo_unitario
+    float margen_bruto
+  }
+
+  fact_transaction {
+    string transaction_id
+    string store_key
+    string customer_key_nullable
+    string payment_method
+    string status
+    float total_amount
+    float ventas_netas
+    boolean loyalty_card
+  }
+
+  fact_store_day {
+    string date_key
+    string store_key
+    float ventas_netas
+    integer transacciones
+    float ticket_promedio
+    float ventas_netas_por_metro_cuadrado
+  }
+
+  fact_stock_gap {
+    string store_key
+    string product_key
+    date fecha_inicio_ausencia
+    date fecha_fin_ausencia
+    integer dias_sin_venta
+    float venta_diaria_promedio_previa
+    float venta_estimada_perdida
+  }
+
+  fact_cohort_month {
+    string cohort_month_key
+    integer mes_relativo
+    integer clientes_activos
+    float tasa_retencion
+    float ticket_promedio
+  }
+
+  dim_date {
+    string date_key
+    date fecha
+    date inicio_semana
+    integer mes
+    integer trimestre
+    integer anio
+  }
+
+  dim_store {
+    string store_key
+    string store_id
+    string store_name
+    string country
+    string format
+    integer size_sqm
+    string region
+  }
+
+  dim_product {
+    string product_key
+    string item_id
+    string item_name
+    string brand
+    string vendor_key
+    string category
+    float cost
+  }
+
+  dim_vendor {
+    string vendor_key
+    string vendor_id
+    string vendor_name
+    string country
+    string tier
+  }
+
+  dim_customer {
+    string customer_key
+    string customer_hash
+    string segmento_lealtad
+    date mes_primera_compra
+  }
+
+  dim_promotion {
+    string promotion_key
+    string promo_name
+    string variant
+    date start_date
+    date end_date
+    string promo_type
+  }
+
   dim_date ||--o{ fact_sales_item : date_key
   dim_store ||--o{ fact_sales_item : store_key
   dim_product ||--o{ fact_sales_item : product_key
   dim_vendor ||--o{ dim_product : vendor_key
   dim_customer ||--o{ fact_sales_item : customer_key
   dim_promotion ||--o{ fact_sales_item : promotion_key
+  dim_store ||--o{ fact_transaction : store_key
+  dim_customer ||--o{ fact_transaction : customer_key
   dim_store ||--o{ fact_store_day : store_key
   dim_date ||--o{ fact_store_day : date_key
   dim_product ||--o{ fact_stock_gap : product_key

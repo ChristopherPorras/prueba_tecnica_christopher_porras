@@ -168,7 +168,7 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
             "total_amount vs suma de items",
             f"{len(amount_mismatches):,} transacciones ({len(amount_mismatches)/len(tx)*100:.1f}%) con diferencia > $0.01; delta maximo {money2(amount_mismatches['delta'].abs().max())}.",
             "La mayoria de diferencias son negativas: el total reportado es menor que la suma de items.",
-            "Para indicadores de ventas netas usar total_amount a nivel transaccion; para categoria/proveedor usar line_gmv y documentar la diferencia.",
+            "Para indicadores de ventas netas usar total_amount a nivel transaccion; para categoria/proveedor usar el monto calculado desde items y documentar la diferencia.",
         ],
         [
             "Unicidad",
@@ -182,25 +182,25 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
             "Montos cero/negativos y precios cero",
             f"{(tx['total_amount'] <= 0).sum():,} transacciones con total_amount <= 0; {((items['unit_price'] == 0) & (~items['was_on_promo'])).sum():,} items con unit_price = 0 sin promo.",
             "Hay ventas completadas con monto cero y precios cero que no estan explicados por promocion.",
-            "Excluir transacciones con total_amount <= 0 de tickets promedio; marcar items con precio cero como alerta de pricing/master data.",
+            "Excluir transacciones con total_amount <= 0 de tickets promedio; marcar items con precio cero como alerta de precios/datos maestros.",
         ],
         [
             "Integridad referencial",
-            "FKs contra dimensiones",
+            "Llaves foraneas contra dimensiones",
             f"{(~tx['store_id'].isin(stores['store_id'])).sum():,} store_id invalidos; {(~items['item_id'].isin(products['item_id'])).sum():,} item_id invalidos; {len(missing_vendor_products):,} productos con vendor_id inexistente.",
             "Cinco productos apuntan a VND_031, que no existe en vendors.",
-            "Mantener esos productos con vendor 'SIN_VENDOR' en analisis de categoria y levantar incidente de master data.",
+            "Mantener esos productos con proveedor 'SIN_VENDOR' en analisis de categoria y levantar incidente de datos maestros.",
         ],
         [
             "Frescura",
-            "Gaps diarios por tienda",
-            f"{len(store_gaps):,} tiendas con gaps. Maximos: "
+            "Ausencias diarias por tienda",
+            f"{len(store_gaps):,} tiendas con ausencias de venta. Maximos: "
             + ", ".join(
                 f"{r.store_id} {r.max_gap_days} dias"
                 for r in store_gaps.sort_values("max_gap_days", ascending=False).head(3).itertuples()
             ),
             "TIENDA_037 tiene 135 dias sin venta antes de iniciar actividad; TIENDA_012 tiene 7 dias sin datos en septiembre 2024.",
-            "Tratar TIENDA_037 como gap esperado por apertura; revisar TIENDA_012 como alerta operativa.",
+            "Tratar TIENDA_037 como ausencia esperada por apertura; revisar TIENDA_012 como alerta operativa.",
         ],
         [
             "Integridad temporal",
@@ -210,11 +210,11 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
             "No excluir del analisis historico, pero corregir opening_date o confirmar soft-opening.",
         ],
         [
-            "A/B Test",
+            "Prueba A/B",
             "Tiendas en CONTROL y TREATMENT",
             f"{len(ab_variants):,} tiendas: " + ", ".join(ab_variants["store_id"].tolist()),
             "TIENDA_008 y TIENDA_037 aparecen asignadas a ambos grupos.",
-            "Excluir estas tiendas del A/B test primario y reportarlas como falla de diseno experimental.",
+            "Excluir estas tiendas de la prueba A/B primaria y reportarlas como falla de diseno experimental.",
         ],
     ]
 
@@ -228,10 +228,10 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
         "",
         "## Notas de uso en bloques siguientes",
         "",
-        "- Ventas netas: `COMPLETED` suma positivo y `RETURNED` resta. Para el A/B test se usan solo transacciones completadas.",
+        "- Ventas netas: `COMPLETED` suma positivo y `RETURNED` resta. Para la prueba A/B se usan solo transacciones completadas.",
         "- Los analisis por proveedor mantienen productos con vendor faltante como `SIN_VENDOR` cuando aplica.",
         "- Las tiendas con doble asignacion experimental se excluyen del resultado estadistico principal.",
-        "- Los gaps de stock son senales operativas, no prueba definitiva de quiebre: se priorizan por ventas estimadas perdidas y velocidad previa.",
+        "- Las ausencias de venta son senales operativas, no prueba definitiva de quiebre: se priorizan por ventas estimadas perdidas y velocidad previa.",
     ]
     (ROOT / "bloque0_auditoria.md").write_text("\n".join(text), encoding="utf-8")
     return {
@@ -753,36 +753,36 @@ def write_sql_queries() -> None:
 -- Supuesto: los CSV fueron cargados como tablas transactions, transaction_items, stores, products, vendors y store_promotions.
 -- Ventas netas: COMPLETED suma positivo y RETURNED resta.
 
--- Query 1: Ventas comparables (Comp Sales)
+-- Query 1: Ventas comparables
 DECLARE current_start DATE DEFAULT DATE '2025-01-01';
 DECLARE current_end DATE DEFAULT DATE '2025-06-30';
 DECLARE previous_start DATE DEFAULT DATE_SUB(current_start, INTERVAL 1 YEAR);
 DECLARE previous_end DATE DEFAULT DATE_SUB(current_end, INTERVAL 1 YEAR);
 
-WITH tx AS (
+WITH transacciones_base AS (
   SELECT
     t.transaction_id,
-    DATE(t.transaction_date) AS transaction_date,
+    DATE(t.transaction_date) AS fecha_transaccion,
     t.store_id,
-    CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END AS net_gmv
+    CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END AS ventas_netas
   FROM transactions t
 ),
-eligible_stores AS (
+tiendas_comparables AS (
   SELECT store_id, store_name, country, format
   FROM stores
   WHERE DATE(opening_date) <= previous_start
 ),
-sales AS (
+ventas AS (
   SELECT
     s.country,
     s.format,
     s.store_id,
     s.store_name,
-    SUM(IF(tx.transaction_date BETWEEN current_start AND current_end, tx.net_gmv, 0)) AS ventas_netas_periodo_actual,
-    SUM(IF(tx.transaction_date BETWEEN previous_start AND previous_end, tx.net_gmv, 0)) AS ventas_netas_periodo_anterior
-  FROM tx
-  JOIN eligible_stores s USING (store_id)
-  WHERE tx.transaction_date BETWEEN previous_start AND current_end
+    SUM(IF(t.fecha_transaccion BETWEEN current_start AND current_end, t.ventas_netas, 0)) AS ventas_netas_periodo_actual,
+    SUM(IF(t.fecha_transaccion BETWEEN previous_start AND previous_end, t.ventas_netas, 0)) AS ventas_netas_periodo_anterior
+  FROM transacciones_base t
+  JOIN tiendas_comparables s USING (store_id)
+  WHERE t.fecha_transaccion BETWEEN previous_start AND current_end
   GROUP BY 1, 2, 3, 4
 )
 SELECT
@@ -793,16 +793,20 @@ SELECT
   ventas_netas_periodo_actual,
   ventas_netas_periodo_anterior,
   SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 AS crecimiento_ventas_comparables_pct,
-  DENSE_RANK() OVER (PARTITION BY format ORDER BY SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 DESC) AS ranking_crecimiento_tienda_formato
-FROM sales
-WHERE ventas_netas_periodo_actual <> 0 AND ventas_netas_periodo_anterior <> 0
+  DENSE_RANK() OVER (
+    PARTITION BY format
+    ORDER BY SAFE_DIVIDE(ventas_netas_periodo_actual, ventas_netas_periodo_anterior) - 1 DESC
+  ) AS ranking_crecimiento_tienda_formato
+FROM ventas
+WHERE ventas_netas_periodo_actual <> 0
+  AND ventas_netas_periodo_anterior <> 0
 ORDER BY format, ranking_crecimiento_tienda_formato;
 
 -- Query 2: Productividad por metro cuadrado
-WITH params AS (
-  SELECT DATE '2025-04-01' AS quarter_start, DATE '2025-06-30' AS quarter_end
+WITH parametros AS (
+  SELECT DATE '2025-04-01' AS fecha_inicio_trimestre, DATE '2025-06-30' AS fecha_fin_trimestre
 ),
-store_sales AS (
+ventas_tienda AS (
   SELECT
     s.store_id,
     s.store_name,
@@ -814,103 +818,103 @@ store_sales AS (
     COUNT(DISTINCT t.transaction_id) AS transacciones
   FROM transactions t
   JOIN stores s USING (store_id)
-  CROSS JOIN params p
-  WHERE DATE(t.transaction_date) BETWEEN p.quarter_start AND p.quarter_end
+  CROSS JOIN parametros p
+  WHERE DATE(t.transaction_date) BETWEEN p.fecha_inicio_trimestre AND p.fecha_fin_trimestre
   GROUP BY 1, 2, 3, 4, 5, 6
 ),
-scored AS (
+tiendas_calculadas AS (
   SELECT
     *,
     SAFE_DIVIDE(ventas_netas, size_sqm) AS ventas_netas_por_metro_cuadrado,
     SAFE_DIVIDE(transacciones, size_sqm) AS transacciones_por_metro_cuadrado,
     SAFE_DIVIDE(ventas_netas, transacciones) AS ticket_promedio,
     PERCENTILE_CONT(SAFE_DIVIDE(ventas_netas, size_sqm), 0.25) OVER (PARTITION BY format) AS percentil_25_ventas_por_metro_cuadrado
-  FROM store_sales
+  FROM ventas_tienda
 )
 SELECT
   *,
   DENSE_RANK() OVER (PARTITION BY format ORDER BY ventas_netas_por_metro_cuadrado DESC) AS ranking_en_formato,
   IF(ventas_netas_por_metro_cuadrado < percentil_25_ventas_por_metro_cuadrado, 'BAJO_RENDIMIENTO', 'OK') AS alerta_rendimiento
-FROM scored
+FROM tiendas_calculadas
 ORDER BY format, ranking_en_formato;
 
 -- Query 3: Cohortes de clientes con tarjeta de lealtad
-WITH loyalty_tx AS (
+WITH transacciones_lealtad AS (
   SELECT
     customer_id,
     transaction_id,
-    DATE_TRUNC(DATE(transaction_date), MONTH) AS tx_month,
+    DATE_TRUNC(DATE(transaction_date), MONTH) AS mes_compra,
     total_amount
   FROM transactions
   WHERE loyalty_card = TRUE
     AND customer_id IS NOT NULL
     AND status = 'COMPLETED'
 ),
-first_purchase AS (
-  SELECT customer_id, MIN(tx_month) AS cohort_month
-  FROM loyalty_tx
+primera_compra AS (
+  SELECT customer_id, MIN(mes_compra) AS mes_cohorte
+  FROM transacciones_lealtad
   GROUP BY 1
 ),
-activity AS (
+actividad AS (
   SELECT
-    f.cohort_month,
-    DATE_DIFF(l.tx_month, f.cohort_month, MONTH) AS month_n,
-    l.customer_id,
-    l.total_amount
-  FROM loyalty_tx l
-  JOIN first_purchase f USING (customer_id)
+    p.mes_cohorte,
+    DATE_DIFF(t.mes_compra, p.mes_cohorte, MONTH) AS mes_relativo,
+    t.customer_id,
+    t.total_amount
+  FROM transacciones_lealtad t
+  JOIN primera_compra p USING (customer_id)
 ),
-cohort_size AS (
-  SELECT cohort_month, COUNT(DISTINCT customer_id) AS cohort_customers
-  FROM first_purchase
+tamano_cohorte AS (
+  SELECT mes_cohorte, COUNT(DISTINCT customer_id) AS clientes_cohorte
+  FROM primera_compra
   GROUP BY 1
 ),
-metrics AS (
+metricas AS (
   SELECT
-    a.cohort_month,
-    a.month_n,
-    COUNT(DISTINCT a.customer_id) AS active_customers,
-    AVG(a.total_amount) AS avg_ticket,
-    ANY_VALUE(cs.cohort_customers) AS cohort_customers,
-    SAFE_DIVIDE(COUNT(DISTINCT a.customer_id), ANY_VALUE(cs.cohort_customers)) AS retention_rate
-  FROM activity a
-  JOIN cohort_size cs USING (cohort_month)
-  WHERE month_n IN (0, 1, 2, 3, 6)
+    a.mes_cohorte,
+    a.mes_relativo,
+    COUNT(DISTINCT a.customer_id) AS clientes_activos,
+    AVG(a.total_amount) AS ticket_promedio,
+    ANY_VALUE(tc.clientes_cohorte) AS clientes_cohorte,
+    SAFE_DIVIDE(COUNT(DISTINCT a.customer_id), ANY_VALUE(tc.clientes_cohorte)) AS tasa_retencion
+  FROM actividad a
+  JOIN tamano_cohorte tc USING (mes_cohorte)
+  WHERE mes_relativo IN (0, 1, 2, 3, 6)
   GROUP BY 1, 2
 )
 SELECT
-  cohort_month,
-  MAX(cohort_customers) AS cohort_customers,
-  MAX(IF(month_n = 0, retention_rate, NULL)) AS retention_m0,
-  MAX(IF(month_n = 1, retention_rate, NULL)) AS retention_m1,
-  MAX(IF(month_n = 2, retention_rate, NULL)) AS retention_m2,
-  MAX(IF(month_n = 3, retention_rate, NULL)) AS retention_m3,
-  MAX(IF(month_n = 6, retention_rate, NULL)) AS retention_m6,
-  MAX(IF(month_n = 0, avg_ticket, NULL)) AS avg_ticket_m0,
-  MAX(IF(month_n = 1, avg_ticket, NULL)) AS avg_ticket_m1,
-  MAX(IF(month_n = 2, avg_ticket, NULL)) AS avg_ticket_m2,
-  MAX(IF(month_n = 3, avg_ticket, NULL)) AS avg_ticket_m3,
-  MAX(IF(month_n = 6, avg_ticket, NULL)) AS avg_ticket_m6,
+  mes_cohorte,
+  MAX(clientes_cohorte) AS clientes_cohorte,
+  MAX(IF(mes_relativo = 0, tasa_retencion, NULL)) AS retencion_mes_0,
+  MAX(IF(mes_relativo = 1, tasa_retencion, NULL)) AS retencion_mes_1,
+  MAX(IF(mes_relativo = 2, tasa_retencion, NULL)) AS retencion_mes_2,
+  MAX(IF(mes_relativo = 3, tasa_retencion, NULL)) AS retencion_mes_3,
+  MAX(IF(mes_relativo = 6, tasa_retencion, NULL)) AS retencion_mes_6,
+  MAX(IF(mes_relativo = 0, ticket_promedio, NULL)) AS ticket_promedio_mes_0,
+  MAX(IF(mes_relativo = 1, ticket_promedio, NULL)) AS ticket_promedio_mes_1,
+  MAX(IF(mes_relativo = 2, ticket_promedio, NULL)) AS ticket_promedio_mes_2,
+  MAX(IF(mes_relativo = 3, ticket_promedio, NULL)) AS ticket_promedio_mes_3,
+  MAX(IF(mes_relativo = 6, ticket_promedio, NULL)) AS ticket_promedio_mes_6,
   CASE
-    WHEN MAX(IF(month_n = 6, avg_ticket, NULL)) > MAX(IF(month_n = 0, avg_ticket, NULL)) THEN 'CRECE'
-    WHEN MAX(IF(month_n = 6, avg_ticket, NULL)) < MAX(IF(month_n = 0, avg_ticket, NULL)) THEN 'DECRECE'
+    WHEN MAX(IF(mes_relativo = 6, ticket_promedio, NULL)) > MAX(IF(mes_relativo = 0, ticket_promedio, NULL)) THEN 'CRECE'
+    WHEN MAX(IF(mes_relativo = 6, ticket_promedio, NULL)) < MAX(IF(mes_relativo = 0, ticket_promedio, NULL)) THEN 'DECRECE'
     ELSE 'SIN_DATOS'
-  END AS ticket_trend_m0_to_m6
-FROM metrics
-GROUP BY cohort_month
-ORDER BY cohort_month;
+  END AS tendencia_ticket_mes_0_a_mes_6
+FROM metricas
+GROUP BY mes_cohorte
+ORDER BY mes_cohorte;
 
 -- Query 4: Retorno de margen bruto sobre inversion por proveedor y categoria
-WITH item_sales AS (
+WITH ventas_item AS (
   SELECT
     p.vendor_id,
     COALESCE(v.vendor_name, 'SIN_VENDOR') AS vendor_name,
     p.category,
     ti.item_id,
-    DATE(t.transaction_date) AS sale_date,
+    DATE(t.transaction_date) AS fecha_venta,
     ti.quantity,
-    ti.quantity * ti.unit_price AS gmv,
-    ti.quantity * p.cost AS cost_total
+    ti.quantity * ti.unit_price AS ventas_brutas_item,
+    ti.quantity * p.cost AS costo_total
   FROM transaction_items ti
   JOIN transactions t USING (transaction_id)
   JOIN products p USING (item_id)
@@ -921,119 +925,142 @@ SELECT
   vendor_id,
   vendor_name,
   category,
-  SUM(gmv) AS ventas_brutas_items,
-  SUM(cost_total) AS cost_total,
-  SUM(gmv) - SUM(cost_total) AS margen_bruto,
-  SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) AS retorno_margen_bruto_sobre_costo,
-  COUNT(DISTINCT item_id) AS active_skus,
-  SAFE_DIVIDE(SUM(quantity), DATE_DIFF(MAX(sale_date), MIN(sale_date), DAY) + 1) AS sales_velocity_units_day,
-  IF(SAFE_DIVIDE(SUM(gmv) - SUM(cost_total), SUM(cost_total)) < 1, 'RETORNO_MARGEN_BAJO_1', 'OK') AS alerta_retorno_margen
-FROM item_sales
+  SUM(ventas_brutas_item) AS ventas_brutas_items,
+  SUM(costo_total) AS costo_total,
+  SUM(ventas_brutas_item) - SUM(costo_total) AS margen_bruto,
+  SAFE_DIVIDE(SUM(ventas_brutas_item) - SUM(costo_total), SUM(costo_total)) AS retorno_margen_bruto_sobre_costo,
+  COUNT(DISTINCT item_id) AS items_activos,
+  SAFE_DIVIDE(SUM(quantity), DATE_DIFF(MAX(fecha_venta), MIN(fecha_venta), DAY) + 1) AS velocidad_unidades_por_dia,
+  IF(SAFE_DIVIDE(SUM(ventas_brutas_item) - SUM(costo_total), SUM(costo_total)) < 1, 'RETORNO_MARGEN_BAJO_1', 'OK') AS alerta_retorno_margen
+FROM ventas_item
 GROUP BY 1, 2, 3
 ORDER BY retorno_margen_bruto_sobre_costo ASC;
 
 -- Query 5: Deteccion de posibles quiebres de stock
-WITH params AS (SELECT DATE '2025-06-30' AS max_date),
-daily_sales AS (
+WITH parametros AS (SELECT DATE '2025-06-30' AS fecha_maxima),
+ventas_diarias AS (
   SELECT
     t.store_id,
     ti.item_id,
-    DATE(t.transaction_date) AS sale_date,
-    SUM(ti.quantity) AS units,
-    SUM(ti.quantity * ti.unit_price) AS gmv
+    DATE(t.transaction_date) AS fecha_venta,
+    SUM(ti.quantity) AS unidades,
+    SUM(ti.quantity * ti.unit_price) AS ventas_brutas
   FROM transaction_items ti
   JOIN transactions t USING (transaction_id)
   WHERE t.status = 'COMPLETED'
   GROUP BY 1, 2, 3
 ),
-store_item_bounds AS (
-  SELECT store_id, item_id, MIN(sale_date) AS first_sale_date, (SELECT max_date FROM params) AS max_date
-  FROM daily_sales
+limites_tienda_item AS (
+  SELECT store_id, item_id, MIN(fecha_venta) AS primera_fecha_venta, (SELECT fecha_maxima FROM parametros) AS fecha_maxima
+  FROM ventas_diarias
   GROUP BY 1, 2
 ),
-spine AS (
-  SELECT b.store_id, b.item_id, day AS calendar_date
-  FROM store_item_bounds b, UNNEST(GENERATE_DATE_ARRAY(b.first_sale_date, b.max_date)) AS day
+calendario AS (
+  SELECT l.store_id, l.item_id, dia AS fecha_calendario
+  FROM limites_tienda_item l, UNNEST(GENERATE_DATE_ARRAY(l.primera_fecha_venta, l.fecha_maxima)) AS dia
 ),
-missing_days AS (
+dias_sin_venta AS (
   SELECT
-    s.store_id,
-    s.item_id,
-    s.calendar_date,
-    DATE_SUB(s.calendar_date, INTERVAL ROW_NUMBER() OVER (PARTITION BY s.store_id, s.item_id ORDER BY s.calendar_date) DAY) AS island_key
-  FROM spine s
-  LEFT JOIN daily_sales d
-    ON d.store_id = s.store_id
-   AND d.item_id = s.item_id
-   AND d.sale_date = s.calendar_date
-  WHERE d.sale_date IS NULL
+    c.store_id,
+    c.item_id,
+    c.fecha_calendario,
+    DATE_SUB(c.fecha_calendario, INTERVAL ROW_NUMBER() OVER (PARTITION BY c.store_id, c.item_id ORDER BY c.fecha_calendario) DAY) AS clave_grupo
+  FROM calendario c
+  LEFT JOIN ventas_diarias v
+    ON v.store_id = c.store_id
+   AND v.item_id = c.item_id
+   AND v.fecha_venta = c.fecha_calendario
+  WHERE v.fecha_venta IS NULL
 ),
-gaps AS (
+ausencias AS (
   SELECT
     store_id,
     item_id,
-    MIN(calendar_date) AS gap_start,
-    MAX(calendar_date) AS gap_end,
-    COUNT(*) AS gap_days
-  FROM missing_days
-  GROUP BY 1, 2, island_key
+    MIN(fecha_calendario) AS fecha_inicio_ausencia,
+    MAX(fecha_calendario) AS fecha_fin_ausencia,
+    COUNT(*) AS dias_sin_venta
+  FROM dias_sin_venta
+  GROUP BY 1, 2, clave_grupo
   HAVING COUNT(*) >= 3
 ),
-scored AS (
+ausencias_priorizadas AS (
   SELECT
-    g.*,
+    a.*,
     SAFE_DIVIDE((
-      SELECT SUM(d.gmv)
-      FROM daily_sales d
-      WHERE d.store_id = g.store_id
-        AND d.item_id = g.item_id
-        AND d.sale_date BETWEEN DATE_SUB(g.gap_start, INTERVAL 14 DAY) AND DATE_SUB(g.gap_start, INTERVAL 1 DAY)
-    ), 14) AS avg_daily_gmv_before_gap
-  FROM gaps g
+      SELECT SUM(v.ventas_brutas)
+      FROM ventas_diarias v
+      WHERE v.store_id = a.store_id
+        AND v.item_id = a.item_id
+        AND v.fecha_venta BETWEEN DATE_SUB(a.fecha_inicio_ausencia, INTERVAL 14 DAY) AND DATE_SUB(a.fecha_inicio_ausencia, INTERVAL 1 DAY)
+    ), 14) AS venta_diaria_promedio_previa
+  FROM ausencias a
 )
 SELECT
-  s.store_id,
-  st.store_name,
-  s.item_id,
+  a.store_id,
+  s.store_name,
+  a.item_id,
   p.item_name,
   p.category,
   COALESCE(v.vendor_name, 'SIN_VENDOR') AS vendor_name,
-  s.gap_start,
-  s.gap_end,
-  s.gap_days,
-  s.avg_daily_gmv_before_gap,
-  s.avg_daily_gmv_before_gap * s.gap_days AS estimated_lost_gmv
-FROM scored s
-JOIN stores st USING (store_id)
+  a.fecha_inicio_ausencia,
+  a.fecha_fin_ausencia,
+  a.dias_sin_venta,
+  a.venta_diaria_promedio_previa,
+  a.venta_diaria_promedio_previa * a.dias_sin_venta AS venta_estimada_perdida
+FROM ausencias_priorizadas a
+JOIN stores s USING (store_id)
 JOIN products p USING (item_id)
 LEFT JOIN vendors v USING (vendor_id)
-ORDER BY estimated_lost_gmv DESC;
+ORDER BY venta_estimada_perdida DESC;
 
 -- Query 6: Impacto de promociones en ticket y volumen
-WITH tx_category AS (
+WITH transaccion_categoria AS (
   SELECT
     t.transaction_id,
     p.category,
-    LOGICAL_OR(ti.was_on_promo) AS has_promo_item,
-    SUM(ti.quantity) AS category_units,
-    SUM(ti.quantity * ti.unit_price) AS category_gmv,
-    ANY_VALUE(t.total_amount) AS transaction_ticket
+    LOGICAL_OR(ti.was_on_promo) AS tiene_item_en_promocion,
+    SUM(ti.quantity) AS unidades_categoria,
+    SUM(ti.quantity * ti.unit_price) AS ventas_categoria,
+    ANY_VALUE(t.total_amount) AS ticket_transaccion
   FROM transactions t
   JOIN transaction_items ti USING (transaction_id)
   JOIN products p USING (item_id)
   WHERE t.status = 'COMPLETED'
   GROUP BY 1, 2
+),
+agregado AS (
+  SELECT
+    category,
+    tiene_item_en_promocion,
+    COUNT(DISTINCT transaction_id) AS transacciones,
+    AVG(ticket_transaccion) AS ticket_promedio,
+    AVG(unidades_categoria) AS unidades_promedio,
+    AVG(ventas_categoria) AS ventas_promedio_categoria
+  FROM transaccion_categoria
+  GROUP BY 1, 2
 )
 SELECT
   category,
-  has_promo_item,
-  COUNT(DISTINCT transaction_id) AS transactions,
-  AVG(transaction_ticket) AS avg_ticket,
-  AVG(category_units) AS avg_units,
-  AVG(category_gmv) AS avg_category_gmv
-FROM tx_category
-GROUP BY 1, 2
-ORDER BY category, has_promo_item;
+  MAX(IF(tiene_item_en_promocion, transacciones, NULL)) AS transacciones_con_promocion,
+  MAX(IF(NOT tiene_item_en_promocion, transacciones, NULL)) AS transacciones_sin_promocion,
+  MAX(IF(tiene_item_en_promocion, ticket_promedio, NULL)) AS ticket_promedio_con_promocion,
+  MAX(IF(NOT tiene_item_en_promocion, ticket_promedio, NULL)) AS ticket_promedio_sin_promocion,
+  MAX(IF(tiene_item_en_promocion, ticket_promedio, NULL)) - MAX(IF(NOT tiene_item_en_promocion, ticket_promedio, NULL)) AS diferencia_ticket_promedio,
+  MAX(IF(tiene_item_en_promocion, unidades_promedio, NULL)) AS unidades_promedio_con_promocion,
+  MAX(IF(NOT tiene_item_en_promocion, unidades_promedio, NULL)) AS unidades_promedio_sin_promocion,
+  MAX(IF(tiene_item_en_promocion, unidades_promedio, NULL)) - MAX(IF(NOT tiene_item_en_promocion, unidades_promedio, NULL)) AS diferencia_unidades_promedio,
+  MAX(IF(tiene_item_en_promocion, ventas_promedio_categoria, NULL)) - MAX(IF(NOT tiene_item_en_promocion, ventas_promedio_categoria, NULL)) AS diferencia_ventas_categoria_promedio,
+  CASE
+    WHEN MAX(IF(tiene_item_en_promocion, unidades_promedio, NULL)) > MAX(IF(NOT tiene_item_en_promocion, unidades_promedio, NULL))
+     AND MAX(IF(tiene_item_en_promocion, ticket_promedio, NULL)) >= MAX(IF(NOT tiene_item_en_promocion, ticket_promedio, NULL))
+    THEN 'UPLIFT_REAL'
+    WHEN MAX(IF(tiene_item_en_promocion, unidades_promedio, NULL)) > MAX(IF(NOT tiene_item_en_promocion, unidades_promedio, NULL))
+    THEN 'MAS_UNIDADES_CON_MENOR_TICKET'
+    ELSE 'SIN_UPLIFT_CLARO'
+  END AS lectura_promocion
+FROM agregado
+GROUP BY category
+ORDER BY category;
 """
     (ROOT / "bloque1_queries.sql").write_text(sql, encoding="utf-8")
 
@@ -1049,28 +1076,28 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
 
 | Tabla | Grano | Campos clave |
 | --- | --- | --- |
-| `fact_sales_item` | Item por transaccion | transaction_item_id, transaction_id, date_key, store_key, product_key, customer_key nullable, promotion_key nullable, quantity, unit_price, gross_gmv, net_gmv, unit_cost, gross_margin |
-| `fact_transaction` | Transaccion | transaction_id, date_key, store_key, customer_key nullable, payment_method, status, total_amount, net_gmv, loyalty_card |
-| `fact_store_day` | Tienda-dia | date_key, store_key, net_gmv, transactions, avg_ticket, gmv_per_sqm, returned_amount |
-| `fact_stock_gap` | Gap tienda-producto | store_key, product_key, gap_start_date_key, gap_end_date_key, gap_days, avg_daily_gmv_before_gap, estimated_lost_gmv |
-| `fact_cohort_month` | Cohorte-mes | cohort_month_key, month_n, active_customers, retention_rate, avg_ticket |
+| `fact_sales_item` | Item por transaccion | transaction_item_id, transaction_id, date_key, store_key, product_key, customer_key nullable, promotion_key nullable, quantity, unit_price, ventas_brutas_item, ventas_netas_item, costo_unitario, margen_bruto |
+| `fact_transaction` | Transaccion | transaction_id, date_key, store_key, customer_key nullable, payment_method, status, total_amount, ventas_netas, loyalty_card |
+| `fact_store_day` | Tienda-dia | date_key, store_key, ventas_netas, transacciones, ticket_promedio, ventas_netas_por_metro_cuadrado, monto_devoluciones |
+| `fact_stock_gap` | Ausencia tienda-producto | store_key, product_key, fecha_inicio_ausencia, fecha_fin_ausencia, dias_sin_venta, venta_diaria_promedio_previa, venta_estimada_perdida |
+| `fact_cohort_month` | Cohorte-mes | cohort_month_key, mes_relativo, clientes_activos, tasa_retencion, ticket_promedio |
 
 ### Dimensiones
 
 | Tabla | Campos |
 | --- | --- |
-| `dim_date` | date_key, date, week_start, month, quarter, year, fiscal_week |
+| `dim_date` | date_key, fecha, inicio_semana, mes, trimestre, anio, semana_fiscal |
 | `dim_store` | store_key, store_id, store_name, country, city, format, size_sqm, opening_date, region |
 | `dim_product` | product_key, item_id, item_name, brand, vendor_key, category, department, cost |
 | `dim_vendor` | vendor_key, vendor_id, vendor_name, country, tier, is_shared_catalog |
-| `dim_customer` | customer_key, customer_hash, loyalty_segment, first_purchase_month. Para compradores anonimos usar customer_key = -1 |
+| `dim_customer` | customer_key, customer_hash, segmento_lealtad, mes_primera_compra. Para compradores anonimos usar customer_key = -1 |
 | `dim_promotion` | promotion_key, promo_name, variant, start_date, end_date, promo_type |
 
 ## Decisiones de diseno
 
 1. `customer_id` nulo se modela como comprador anonimo. El 59.8% de transacciones no tiene cliente identificado; forzar un customer_id falso inflaria retencion. Para cohortes solo se usa `loyalty_card = TRUE`.
 2. Se separa `fact_sales_item` de `fact_transaction`. La auditoria muestra 1,745 diferencias entre total de transaccion y suma de items; tienda y ticket deben usar el total reportado, mientras categoria/proveedor necesita el item.
-3. `fact_store_day` es una tabla derivada. Comp Sales, productividad y dashboard diario necesitan respuestas rapidas por tienda/dia sin recalcular 542k lineas cada vez.
+3. `fact_store_day` es una tabla derivada. Las ventas comparables, productividad y dashboard diario necesitan respuestas rapidas por tienda/dia sin recalcular 542k lineas cada vez.
 4. `dim_promotion` queda en una dimension separada porque una tienda puede tener experimentos por ventana temporal. Las asignaciones ambiguas se auditan y no se sobreescriben silenciosamente.
 5. `fact_stock_gap` es una tabla operacional derivada. No representa inventario real; representa senales de ausencia de venta y debe cruzarse con inventario/ordenes cuando existan.
 
@@ -1092,12 +1119,118 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
     (ROOT / "bloque2_decisiones.md").write_text(md, encoding="utf-8")
     (ROOT / "bloque2_modelo.mmd").write_text(
         """erDiagram
+  fact_sales_item {
+    string transaction_item_id
+    string transaction_id
+    string store_key
+    string product_key
+    string customer_key_nullable
+    string promotion_key_nullable
+    integer quantity
+    float ventas_netas_item
+    float costo_unitario
+    float margen_bruto
+  }
+
+  fact_transaction {
+    string transaction_id
+    string store_key
+    string customer_key_nullable
+    string payment_method
+    string status
+    float total_amount
+    float ventas_netas
+    boolean loyalty_card
+  }
+
+  fact_store_day {
+    string date_key
+    string store_key
+    float ventas_netas
+    integer transacciones
+    float ticket_promedio
+    float ventas_netas_por_metro_cuadrado
+  }
+
+  fact_stock_gap {
+    string store_key
+    string product_key
+    date fecha_inicio_ausencia
+    date fecha_fin_ausencia
+    integer dias_sin_venta
+    float venta_diaria_promedio_previa
+    float venta_estimada_perdida
+  }
+
+  fact_cohort_month {
+    string cohort_month_key
+    integer mes_relativo
+    integer clientes_activos
+    float tasa_retencion
+    float ticket_promedio
+  }
+
+  dim_date {
+    string date_key
+    date fecha
+    date inicio_semana
+    integer mes
+    integer trimestre
+    integer anio
+  }
+
+  dim_store {
+    string store_key
+    string store_id
+    string store_name
+    string country
+    string format
+    integer size_sqm
+    string region
+  }
+
+  dim_product {
+    string product_key
+    string item_id
+    string item_name
+    string brand
+    string vendor_key
+    string category
+    float cost
+  }
+
+  dim_vendor {
+    string vendor_key
+    string vendor_id
+    string vendor_name
+    string country
+    string tier
+  }
+
+  dim_customer {
+    string customer_key
+    string customer_hash
+    string segmento_lealtad
+    date mes_primera_compra
+  }
+
+  dim_promotion {
+    string promotion_key
+    string promo_name
+    string variant
+    date start_date
+    date end_date
+    string promo_type
+  }
+
   dim_date ||--o{ fact_sales_item : date_key
   dim_store ||--o{ fact_sales_item : store_key
   dim_product ||--o{ fact_sales_item : product_key
   dim_vendor ||--o{ dim_product : vendor_key
   dim_customer ||--o{ fact_sales_item : customer_key
   dim_promotion ||--o{ fact_sales_item : promotion_key
+  dim_store ||--o{ fact_transaction : store_key
+  dim_customer ||--o{ fact_transaction : customer_key
   dim_store ||--o{ fact_store_day : store_key
   dim_date ||--o{ fact_store_day : date_key
   dim_product ||--o{ fact_stock_gap : product_key
@@ -1111,9 +1244,9 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
     w, h = landscape(letter)
     c.setFillColor(colors.HexColor("#1f2933"))
     c.setFont("Helvetica-Bold", 22)
-    c.drawString(0.55 * inch, h - 0.55 * inch, "Star Schema - Retail Data Mart")
+    c.drawString(0.55 * inch, h - 0.55 * inch, "Modelo estrella - Retail multiformato")
     c.setFont("Helvetica", 10)
-    c.drawString(0.55 * inch, h - 0.78 * inch, "Grano principal: item vendido por transaccion. Tablas derivadas para dashboard, cohortes y stock gaps.")
+    c.drawString(0.55 * inch, h - 0.78 * inch, "Grano principal: item vendido por transaccion. Tablas derivadas para dashboard, cohortes y ausencias de venta.")
 
     boxes = {
         "fact_sales_item": (4.1 * inch, 2.55 * inch, 2.35 * inch, 1.35 * inch, "#176B87"),
@@ -1136,16 +1269,16 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
         c.drawString(x + 0.12 * inch, y + bh - 0.25 * inch, name)
         c.setFont("Helvetica", 7.8)
         field_map = {
-            "fact_sales_item": "qty, price, net_gmv, cost, margin",
-            "fact_store_day": "gmv, tx, ticket, gmv_per_sqm",
-            "fact_stock_gap": "gap_days, avg_before, lost_gmv",
-            "fact_cohort_month": "retention, avg_ticket",
-            "dim_store": "country, format, region, size",
-            "dim_product": "category, department, cost",
-            "dim_vendor": "tier, country, shared_catalog",
-            "dim_customer": "hash, segment, first_month",
-            "dim_promotion": "variant, dates, type",
-            "dim_date": "week, month, quarter, year",
+            "fact_sales_item": "cantidad, precio, ventas netas, costo, margen",
+            "fact_store_day": "ventas netas, transacciones, ticket, ventas por metro cuadrado",
+            "fact_stock_gap": "dias sin venta, promedio previo, perdida estimada",
+            "fact_cohort_month": "mes relativo, clientes activos, retencion, ticket",
+            "dim_store": "pais, formato, region, metros cuadrados",
+            "dim_product": "categoria, departamento, costo",
+            "dim_vendor": "nivel, pais, catalogo compartido",
+            "dim_customer": "cliente protegido, segmento, primera compra",
+            "dim_promotion": "variante, fechas, tipo",
+            "dim_date": "semana, mes, trimestre, anio",
         }
         c.drawString(x + 0.12 * inch, y + 0.18 * inch, field_map[name])
 
@@ -1242,6 +1375,8 @@ def write_analysis_html(
     electronics_share = pareto[pareto["category"] == "Electrónica"]["net_line_gmv"].sum() / pareto["net_line_gmv"].sum() * 100
     gmroi_low = (gmroi_df["gmroi"] < 1).sum()
     ttest = ab["ttest_gmv"]
+    ttest_tx = ab["ttest_tx"]
+    ttest_ticket = ab["ttest_ticket"]
     change = ab["ttest_change"]
 
     sections = f"""
@@ -1250,7 +1385,7 @@ def write_analysis_html(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bloque 3 - Analisis Exploratorio y A/B Test</title>
+  <title>Bloque 3 - Analisis Exploratorio y Prueba A/B</title>
   <style>
     body {{ margin:0; font-family: Arial, sans-serif; color:#1f2933; background:#fbfaf7; line-height:1.5; }}
     main {{ max-width: 1120px; margin: 0 auto; padding: 34px 24px 56px; }}
@@ -1283,14 +1418,16 @@ def write_analysis_html(
   <h3>1. Estacionalidad por formato</h3>
   <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="Ventas netas semanales por formato">
   <p>El formato mas sensible es <b>{cv.iloc[0]['format']}</b>, con coeficiente de variacion {cv.iloc[0]['cv']:.2f}. Los picos principales se concentran alrededor de semanas comerciales fuertes; las caidas grandes se explican por cierres de ciclo/promocion o semanas posteriores a picos.</p>
-  {top_peaks[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).to_html(index=False)}
+  {top_peaks[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).rename(columns={'week_start': 'semana', 'format': 'formato', 'net_gmv': 'ventas_netas', 'wow_abs': 'cambio_semana_anterior', 'wow_pct': 'cambio_porcentual'}).to_html(index=False)}
   <p><b>Caidas mas significativas:</b></p>
-  {top_drops[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).to_html(index=False)}
+  {top_drops[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).rename(columns={'week_start': 'semana', 'format': 'formato', 'net_gmv': 'ventas_netas', 'wow_abs': 'cambio_semana_anterior', 'wow_pct': 'cambio_porcentual'}).to_html(index=False)}
+  <p><b>Hipotesis de picos:</b> 2024-12-02 en HIPERMERCADO se asocia a temporada navidena y compras de alto valor; 2024-07-01 en SUPERMERCADO puede venir de pago de medio ano y abastecimiento de inicio de semestre; 2025-05-05 en SUPERMERCADO coincide con una semana comercial fuerte previa a Dia de la Madre en la region.</p>
+  <p><b>Hipotesis de caidas:</b> 2024-12-30 cae por compras adelantadas de Navidad y menor trafico posterior; la caida de HIPERMERCADO en esa misma semana sugiere normalizacion despues de promociones; 2024-07-29 en HIPERMERCADO parece cierre de ciclo despues del pico de julio.</p>
 
   <h3>2. Pareto de categorias por formato</h3>
   <img src="bloque3_visualizaciones/pareto_categorias_gmv.svg" alt="Pareto de categorias">
   <p>En todos los formatos, Electronica y Hogar explican alrededor de 76% de las ventas netas. El patron de HIPERMERCADO y DESCUENTO es muy parecido: no cambia tanto la mezcla lider, sino la productividad y escala por tienda. Esto sugiere que el comprador de descuento tambien esta usando el formato para compras de alto valor.</p>
-  {pareto.sort_values(['format','cum_share']).groupby('format').head(3)[['format','category','share','cum_share']].assign(share=lambda d: (d['share']*100).round(1), cum_share=lambda d: (d['cum_share']*100).round(1)).to_html(index=False)}
+  {pareto.sort_values(['format','cum_share']).groupby('format').head(3)[['format','category','share','cum_share']].assign(share=lambda d: (d['share']*100).round(1), cum_share=lambda d: (d['cum_share']*100).round(1)).rename(columns={'format': 'formato', 'category': 'categoria', 'share': 'participacion_pct', 'cum_share': 'participacion_acumulada_pct'}).to_html(index=False)}
 
   <h3>3. Cohortes de lealtad</h3>
   <img src="bloque3_visualizaciones/cohortes_retencion.svg" alt="Heatmap de cohortes">
@@ -1298,18 +1435,19 @@ def write_analysis_html(
 
   <h3>4. Quiebres de stock e impacto</h3>
   <img src="bloque3_visualizaciones/stockouts_gmv_perdido_categoria.svg" alt="Ventas estimadas perdidas por quiebres">
-  <p>Se detectaron {len(gaps):,} gaps de 3+ dias. No todos son quiebres reales, pero priorizados por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: {money(category_loss.iloc[0])}. Proveedores con mayor impacto estimado:</p>
-  {vendor_loss.reset_index().rename(columns={'estimated_lost_gmv':'lost_gmv'}).to_html(index=False)}
+  <p>Se detectaron {len(gaps):,} ausencias de venta de 3+ dias. No todas son quiebres reales, pero priorizadas por ventas estimadas perdidas apuntan a Electronica como el mayor riesgo: {money(category_loss.iloc[0])}. Por la concentracion en productos con venta historica, lo interpreto principalmente como riesgo de abastecimiento/disponibilidad, no como falta de demanda. Proveedores con mayor impacto estimado:</p>
+  {vendor_loss.reset_index().assign(estimated_lost_gmv=lambda d: d['estimated_lost_gmv'].map(money)).rename(columns={'vendor_id': 'proveedor_id', 'vendor_name': 'proveedor', 'estimated_lost_gmv': 'ventas_estimadas_perdidas'}).to_html(index=False)}
 
   <h3>5. Hallazgo libre</h3>
-  <div class="callout">Electronica representa {electronics_share:.1f}% de las ventas totales aunque son 20 de 200 SKUs. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos SKUs mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 SKUs de Electronica antes de expandirlo a todo el catalogo.</div>
+  <div class="callout">Electronica representa {electronics_share:.1f}% de las ventas totales aunque son 20 de 200 productos. Esto crea una concentracion fuerte: cualquier quiebre o error de precio en pocos productos mueve el resultado regional. La recomendacion es crear monitoreo diario de disponibilidad para los 20 productos de Electronica antes de expandirlo a todo el catalogo.</div>
 
-  <h2>Parte B - Interpretacion de A/B Test</h2>
+  <h2>Parte B - Interpretacion de Prueba A/B</h2>
   <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="Prueba A/B de ventas promedio">
-  <p>Validacion: hay dos tiendas asignadas a ambos grupos ({', '.join(ab['ambiguous'])}), excluidas del test primario. Los grupos limpios no son perfectamente comparables: CONTROL tiene tiendas mas grandes y mas hiper/supermercados.</p>
-  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>{money2(ttest['diff'])}</b>, lift {ttest['lift_pct']:.1f}%, p-value {ttest['p_value']:.3f}, IC95% [{money2(ttest['ci_low'])}, {money2(ttest['ci_high'])}]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
-  <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = {money2(change['diff'])}, p-value {change['p_value']:.3f}. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
-  <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria un segundo test estratificado por formato y tamano, con costo de implementacion medido. Si el p-value fuera 0.08 y el lift cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
+  <p>Validacion: hay dos tiendas asignadas a ambos grupos ({', '.join(ab['ambiguous'])}), excluidas de la prueba primaria. Los grupos limpios no son perfectamente comparables: CONTROL tenia ventas semanales base de {money2(ab['pre_summary'].loc['CONTROL', 'avg_weekly_gmv'])} contra {money2(ab['pre_summary'].loc['TREATMENT', 'avg_weekly_gmv'])} en TREATMENT, tamano promedio de {ab['size_summary'].loc['CONTROL', 'mean']:.1f} vs {ab['size_summary'].loc['TREATMENT', 'mean']:.1f} metros cuadrados, y mas hipermercados/supermercados.</p>
+  <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>{money2(ttest['diff'])}</b>, incremento relativo {ttest['lift_pct']:.1f}%, valor p {ttest['p_value']:.3f}, IC95% [{money2(ttest['ci_low'])}, {money2(ttest['ci_high'])}]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
+  <p>Ticket y frecuencia: TREATMENT tuvo {ttest_tx['treatment_mean']:.1f} transacciones semanales promedio contra {ttest_tx['control_mean']:.1f} en CONTROL; diferencia {ttest_tx['diff']:.1f}, valor p {ttest_tx['p_value']:.3f}. El ticket promedio tambien fue menor: {money2(ttest_ticket['treatment_mean'])} contra {money2(ttest_ticket['control_mean'])}; diferencia {money2(ttest_ticket['diff'])}, valor p {ttest_ticket['p_value']:.3f}. Por eso el resultado directo no viene de tickets mas altos ni de mayor frecuencia.</p>
+  <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = {money2(change['diff'])}, valor p {change['p_value']:.3f}. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
+  <p><b>Decision:</b> no implementaria la exhibicion en todas las tiendas todavia. Haria una segunda prueba estratificada por formato y tamano, con costo de implementacion medido. Si el valor p fuera 0.08 y el incremento relativo cubre el costo, lo trataria como senal prometedora para piloto ampliado, no como rollout total.</p>
 </main>
 </body>
 </html>
@@ -1410,7 +1548,7 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
   </div>
   <section>
     <h2>Indicadores principales</h2>
-    <details class="logic" open>
+    <details class="logic">
       <summary>Explicacion tecnica y consulta base</summary>
       <p>Los indicadores usan ventas netas: una venta completada suma y una devolucion resta. El ticket promedio divide ventas netas entre transacciones. Las ventas netas por metro cuadrado dividen las ventas netas entre el tamano de las tiendas incluidas por los filtros.</p>
 	      <pre><code>WITH parametros AS (
@@ -1774,7 +1912,7 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
         [
             f"Best comparable store: {best['store_id']} with {best['growth_pct']:.1f}% growth.",
             f"Weakest comparable store: {worst['store_id']} with {worst['growth_pct']:.1f}% growth.",
-            f"{low_stores} stores are below the p25 of net sales per square meter inside their format.",
+            f"{low_stores} stores are below the 25th percentile of net sales per square meter inside their format.",
         ],
     )
     slide(
@@ -1790,15 +1928,15 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
         [
             "Data quality risk: 1,745 transactions do not match item totals. Use transaction total for store sales.",
             "Experiment risk: Treatment stores are smaller before the test. The groups are not fully balanced.",
-            f"Stock risk: top categories with gaps can erase millions in sales if supply is not corrected.",
+            "Stock risk: top categories with sales gaps can erase millions in sales if supply is not corrected.",
         ],
     )
     slide(
         "5. Recommendations",
         [
             "Do not roll out the new display to all stores yet. Run a second balanced test by format and size.",
-            f"Create a daily stock alert for the top 20 Electronics SKUs. Owner: Supply Chain. Start in 30 days.",
-            f"Launch a 90-day productivity sprint for stores below p25 net sales per square meter. Owner: Regional Operations.",
+            f"Create a daily stock alert for the top 20 Electronics products. Owner: Supply Chain. Start in 30 days.",
+            f"Launch a 90-day productivity sprint for stores below the 25th percentile of net sales per square meter. Owner: Regional Operations.",
         ],
         "Simple English version for VP Operations review.",
     )
@@ -1851,7 +1989,7 @@ def write_readme(dfs: dict[str, pd.DataFrame]) -> None:
     tx = dfs["transactions"]
     text = f"""# Prueba tecnica Data Analyst - Retail Centroamerica
 
-Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, A/B test, framework de indicadores, dashboard operativo y presentacion ejecutiva en ingles.
+Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad, SQL avanzado, modelo dimensional, analisis exploratorio, prueba A/B, framework de indicadores, dashboard operativo y presentacion ejecutiva en ingles.
 
 ## Como revisar rapido
 
@@ -1890,16 +2028,29 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque1_queries.sql`: seis queries avanzadas comentadas.
 - `bloque2_modelo.pdf`: diagrama del star schema.
 - `bloque2_decisiones.md`: decisiones de modelado, ETL/ELT y gobernanza.
-- `bloque3_analisis.html`: EDA, A/B test e interpretacion.
+- `bloque3_analisis.html`: EDA, prueba A/B e interpretacion.
 - `bloque3_visualizaciones/`: visualizaciones exportadas en SVG.
 - `bloque4_kpi_framework.md`: tabla de indicadores y metrica principal.
-- `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
+- `bloque5_dashboard.html`: dashboard operativo interactivo local.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
 - `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
 - `GUIA_SQLITE_VSC.md`: pasos para crear, consultar y abrir la base SQLite local desde VS Code.
 - `sqlite/`: scripts SQLite para validar carga, ejecutar Bloque 1 y responder pruebas en vivo.
 - `scripts/run_sqlite_block1.py`: ejecuta las seis consultas del Bloque 1 y guarda resultados como tablas SQLite.
 - `scripts/query_sqlite.py`: ejecuta cualquier consulta SQLite desde terminal y opcionalmente guarda resultados como tablas.
+
+## Mapa contra requerimientos
+
+| Bloque | Requerimiento principal | Donde revisarlo |
+| --- | --- | --- |
+| 0 | Auditoria de completitud, consistencia, unicidad, validez, llaves, frescura, tiempo y prueba A/B | `bloque0_auditoria.md` |
+| 1 | Seis consultas avanzadas comentadas | `bloque1_queries.sql` y version ejecutable local en `sqlite/03_bloque1_queries_sqlite.sql` |
+| 2 | Modelo estrella, decisiones de diseno, pipeline y gobernanza | `bloque2_modelo.pdf` y `bloque2_decisiones.md` |
+| 3 | Analisis exploratorio, visualizaciones y evaluacion estadistica | `bloque3_analisis.html` y `bloque3_visualizaciones/` |
+| 4 | Framework de 6 a 10 indicadores, indicador anticipado, indicador compuesto y metrica principal | `bloque4_kpi_framework.md` |
+| 5 | Dashboard operativo y presentacion ejecutiva en ingles | `bloque5_dashboard.html` y `bloque5_presentacion_EN.pdf` |
+
+El dashboard se entrega como HTML interactivo para que pueda abrirse desde VS Code sin instalar Power BI, Tableau ni un servidor local. La base ejecutable para preguntas en vivo es SQLite.
 
 ## Metodologia y validacion
 
@@ -1915,15 +2066,30 @@ Validacion manual realizada:
 - Conteos de filas contra los CSV originales.
 - Reglas de calidad del Bloque 0.
 - Rango de fechas, asignaciones A/B ambiguas y consistencia de llaves.
-- Formulas principales de ventas netas, retorno de margen bruto sobre inversion, cohortes, t-test y productividad.
+- Formulas principales de ventas netas, retorno de margen bruto sobre inversion, cohortes, prueba t y productividad.
 - Apertura de los archivos HTML/PDF generados.
 
 Modificaciones humanas/criterio aplicado:
 
 - Se eligieron ventas netas restando devoluciones.
-- Se excluyeron tiendas con doble asignacion del A/B test.
+- Se excluyeron tiendas con doble asignacion de la prueba A/B.
 - Se priorizo SQLite porque permite ejecutar base de datos local sin permisos de administrador.
-- Se documento que los gaps de stock son senales operativas, no inventario real.
+- Se documento que las ausencias de venta son senales operativas, no inventario real.
+
+## Documentacion de uso de IA
+
+Se uso asistencia conversacional como apoyo para acelerar estructura, redaccion inicial, consultas SQL y revisiones de consistencia. Los prompts principales fueron:
+
+- Analizar la prueba tecnica, proponer estructura de repositorio y cubrir los entregables.
+- Convertir la parte de base de datos a SQLite para poder ejecutarla en una computadora sin permisos de administrador.
+- Revisar el dashboard, los nombres visibles y las explicaciones tecnicas para que quedaran claros en espanol.
+
+Validacion y criterio aplicado manualmente:
+
+- Contraste de conteos contra los CSV originales.
+- Revision de reglas de calidad y decisiones de exclusion.
+- Ajuste de formulas de ventas netas, retorno de margen bruto sobre inversion, cohortes, productividad y prueba estadistica.
+- Pruebas locales de la base SQLite y de las consultas del Bloque 1.
 """
     (ROOT / "README.md").write_text(text, encoding="utf-8")
 

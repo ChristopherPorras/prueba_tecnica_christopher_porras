@@ -8,28 +8,28 @@ Grano principal: una fila por item vendido dentro de una transaccion (`fact_sale
 
 | Tabla | Grano | Campos clave |
 | --- | --- | --- |
-| `fact_sales_item` | Item por transaccion | transaction_item_id, transaction_id, date_key, store_key, product_key, customer_key nullable, promotion_key nullable, quantity, unit_price, gross_gmv, net_gmv, unit_cost, gross_margin |
-| `fact_transaction` | Transaccion | transaction_id, date_key, store_key, customer_key nullable, payment_method, status, total_amount, net_gmv, loyalty_card |
-| `fact_store_day` | Tienda-dia | date_key, store_key, net_gmv, transactions, avg_ticket, gmv_per_sqm, returned_amount |
-| `fact_stock_gap` | Gap tienda-producto | store_key, product_key, gap_start_date_key, gap_end_date_key, gap_days, avg_daily_gmv_before_gap, estimated_lost_gmv |
-| `fact_cohort_month` | Cohorte-mes | cohort_month_key, month_n, active_customers, retention_rate, avg_ticket |
+| `fact_sales_item` | Item por transaccion | transaction_item_id, transaction_id, date_key, store_key, product_key, customer_key nullable, promotion_key nullable, quantity, unit_price, ventas_brutas_item, ventas_netas_item, costo_unitario, margen_bruto |
+| `fact_transaction` | Transaccion | transaction_id, date_key, store_key, customer_key nullable, payment_method, status, total_amount, ventas_netas, loyalty_card |
+| `fact_store_day` | Tienda-dia | date_key, store_key, ventas_netas, transacciones, ticket_promedio, ventas_netas_por_metro_cuadrado, monto_devoluciones |
+| `fact_stock_gap` | Ausencia tienda-producto | store_key, product_key, fecha_inicio_ausencia, fecha_fin_ausencia, dias_sin_venta, venta_diaria_promedio_previa, venta_estimada_perdida |
+| `fact_cohort_month` | Cohorte-mes | cohort_month_key, mes_relativo, clientes_activos, tasa_retencion, ticket_promedio |
 
 ### Dimensiones
 
 | Tabla | Campos |
 | --- | --- |
-| `dim_date` | date_key, date, week_start, month, quarter, year, fiscal_week |
+| `dim_date` | date_key, fecha, inicio_semana, mes, trimestre, anio, semana_fiscal |
 | `dim_store` | store_key, store_id, store_name, country, city, format, size_sqm, opening_date, region |
 | `dim_product` | product_key, item_id, item_name, brand, vendor_key, category, department, cost |
 | `dim_vendor` | vendor_key, vendor_id, vendor_name, country, tier, is_shared_catalog |
-| `dim_customer` | customer_key, customer_hash, loyalty_segment, first_purchase_month. Para compradores anonimos usar customer_key = -1 |
+| `dim_customer` | customer_key, customer_hash, segmento_lealtad, mes_primera_compra. Para compradores anonimos usar customer_key = -1 |
 | `dim_promotion` | promotion_key, promo_name, variant, start_date, end_date, promo_type |
 
 ## Decisiones de diseno
 
 1. `customer_id` nulo se modela como comprador anonimo. El 59.8% de transacciones no tiene cliente identificado; forzar un customer_id falso inflaria retencion. Para cohortes solo se usa `loyalty_card = TRUE`.
 2. Se separa `fact_sales_item` de `fact_transaction`. La auditoria muestra 1,745 diferencias entre total de transaccion y suma de items; tienda y ticket deben usar el total reportado, mientras categoria/proveedor necesita el item.
-3. `fact_store_day` es una tabla derivada. Comp Sales, productividad y dashboard diario necesitan respuestas rapidas por tienda/dia sin recalcular 542k lineas cada vez.
+3. `fact_store_day` es una tabla derivada. Las ventas comparables, productividad y dashboard diario necesitan respuestas rapidas por tienda/dia sin recalcular 542k lineas cada vez.
 4. `dim_promotion` queda en una dimension separada porque una tienda puede tener experimentos por ventana temporal. Las asignaciones ambiguas se auditan y no se sobreescriben silenciosamente.
 5. `fact_stock_gap` es una tabla operacional derivada. No representa inventario real; representa senales de ausencia de venta y debe cruzarse con inventario/ordenes cuando existan.
 

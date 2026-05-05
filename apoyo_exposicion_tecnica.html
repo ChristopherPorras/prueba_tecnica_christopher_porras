@@ -79,7 +79,7 @@
       <div class="card step"><h3>1. Calidad</h3><p>59.8% de tickets no tiene cliente identificado, pero es consistente con lealtad falsa.</p></div>
       <div class="card step"><h3>2. Productividad</h3><p>10 tiendas caen debajo del percentil 25 dentro de su formato.</p></div>
       <div class="card step"><h3>3. Categorías</h3><p>Electrónica concentra 52.6% de ventas netas aunque son pocos productos.</p></div>
-      <div class="card step"><h3>4. Riesgo</h3><p>Los gaps de venta sugieren riesgo operativo fuerte en disponibilidad.</p></div>
+      <div class="card step"><h3>4. Riesgo</h3><p>Las ausencias de venta sugieren riesgo operativo fuerte en disponibilidad.</p></div>
       <div class="card step"><h3>5. Decisión</h3><p>No escalaría la exhibición A/B sin repetir el test con grupos balanceados.</p></div>
     </div>
   </section>
@@ -91,7 +91,7 @@
       <li><b>Auditoria de consistencia:</b> revisar diferencias entre total de transaccion y suma de items para justificar decisiones de metrica.</li>
       <li><b>Indicadores del dashboard:</b> revisar la consulta de indicadores principales del dashboard y conectar la logica con ventas netas.</li>
       <li><b>Exploracion operativa:</b> abrir `sqlite/02_consultas_exploracion_operativa_sqlite.sql` y revisar productividad por tienda.</li>
-      <li><b>Criterio de negocio:</b> explicar por que el A/B test no deberia escalar sin repetir un diseno balanceado.</li>
+      <li><b>Criterio de negocio:</b> explicar por que la prueba A/B no deberia escalar sin repetir un diseno balanceado.</li>
     </ol>
   </section>
 
@@ -119,7 +119,7 @@ HAVING COUNT(DISTINCT variant) > 1;</div>
       <tbody>
         <tr><td>¿Por qué ventas netas y no ventas brutas?</td><td>Porque retail necesita descontar devoluciones para medir desempeño real. En el SQL uso `RETURNED` como negativo.</td></tr>
         <tr><td>¿Por qué no usaste todos los clientes para cohortes?</td><td>Porque 59.8% no tiene `customer_id`; mezclar anónimos inflaría o rompería la retención. Solo uso clientes identificados con tarjeta.</td></tr>
-        <tr><td>¿Por qué el A/B test no se debe escalar?</td><td>Porque hay dos tiendas asignadas a ambos grupos y los grupos no están balanceados por tamaño/formato. El p-value directo tampoco es significativo.</td></tr>
+        <tr><td>¿Por qué la prueba A/B no se debe escalar?</td><td>Porque hay dos tiendas asignadas a ambos grupos y los grupos no están balanceados por tamaño/formato. El valor p directo tampoco es significativo.</td></tr>
         <tr><td>¿Los quiebres de stock son inventario real?</td><td>No. Son señales de ausencia de venta. Los priorizo por ventas estimadas perdidas y recomendaría cruzarlos con inventario y órdenes.</td></tr>
         <tr><td>¿Qué harías en producción?</td><td>Crearía cargas incrementales con `MERGE`, validaciones automáticas de calidad, alertas por tienda sin datos y métricas certificadas.</td></tr>
       </tbody>

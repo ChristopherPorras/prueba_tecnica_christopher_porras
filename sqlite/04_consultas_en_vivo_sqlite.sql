@@ -114,6 +114,20 @@ FROM bloque1_q2_productividad_tienda
 ORDER BY ventas_netas_por_metro_cuadrado ASC
 LIMIT 20;
 
--- 12. Guardar una prueba en vivo como tabla.
+-- 12. Impacto de promociones usando tabla del Bloque 1.
+-- Primero ejecutar: py scripts\run_sqlite_block1.py
+SELECT
+  category,
+  ticket_promedio_con_promocion,
+  ticket_promedio_sin_promocion,
+  diferencia_ticket_promedio,
+  unidades_promedio_con_promocion,
+  unidades_promedio_sin_promocion,
+  diferencia_unidades_promedio,
+  lectura_promocion
+FROM bloque1_q6_promociones_ticket_volumen
+ORDER BY diferencia_unidades_promedio DESC;
+
+-- 13. Guardar una prueba en vivo como tabla.
 -- Ejemplo de comando:
 -- py scripts\query_sqlite.py "SELECT format, COUNT(*) AS tiendas FROM stores GROUP BY format;" --save prueba_tiendas_por_formato
