@@ -9,7 +9,7 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
 5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
-6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html` y `GUIA_SQL_SERVER_VSC.md`.
+6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html`, `GUIA_SQLITE_VSC.md` y `GUIA_SQL_SERVER_VSC.md`.
 
 ## Como regenerar todo
 
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 python scripts/generate_all.py
 ```
 
-En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para mostrar la parte de base de datos desde VS Code, abre `sql/README_SQL_SERVER.md` y ejecuta los scripts numerados de la carpeta `sql/` con la extension MSSQL.
+En una computadora donde no puedas instalar programas, puedes revisar todos los entregables ya generados sin ejecutar nada. Para mostrar la parte de base de datos sin servidor local, usa SQLite: ejecuta `python scripts/create_sqlite_db.py`, abre `GUIA_SQLITE_VSC.md` y revisa las consultas de la carpeta `sqlite/`.
 
 ## Datos
 
@@ -44,7 +44,9 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
 - `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
+- `GUIA_SQLITE_VSC.md`: pasos para crear y abrir la base SQLite local desde VS Code.
 - `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
+- `sqlite/`: scripts SQLite para validar carga y ejecutar consultas de exploracion operativa.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.

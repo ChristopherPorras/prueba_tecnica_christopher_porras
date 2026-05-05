@@ -63,7 +63,7 @@
 <main>
   <section>
     <h2>Resumen ejecutivo</h2>
-    <p class="accent card">Solucion reproducible de punta a punta: auditoria de datos, modelo estrella, SQL avanzado, analisis exploratorio, evaluacion A/B, dashboard operativo y version SQL Server ejecutable desde VS Code.</p>
+    <p class="accent card">Solucion reproducible de punta a punta: auditoria de datos, modelo estrella, SQL avanzado, analisis exploratorio, evaluacion A/B, dashboard operativo y base local ejecutable desde VS Code.</p>
   </section>
 
   <div class="grid four">
@@ -87,10 +87,10 @@
   <section>
     <h2>Ruta de exposicion tecnica</h2>
     <ol class="talk-track">
-      <li><b>Validacion de carga:</b> abrir `sql/02_validar_carga_sql_server.sql` y confirmar conteos, fechas y reglas basicas.</li>
+      <li><b>Validacion de carga:</b> abrir `sqlite/01_validar_carga_sqlite.sql` o `sql/02_validar_carga_sql_server.sql` y confirmar conteos, fechas y reglas basicas.</li>
       <li><b>Auditoria de consistencia:</b> revisar diferencias entre total de transaccion y suma de items para justificar decisiones de metrica.</li>
-      <li><b>Indicadores del dashboard:</b> abrir `sql/04_consultas_dashboard_sql_server.sql` y ejecutar la consulta de indicadores principales.</li>
-      <li><b>Exploracion operativa:</b> abrir `sql/05_consultas_exploracion_operativa.sql` y revisar productividad por tienda.</li>
+      <li><b>Indicadores del dashboard:</b> revisar la consulta de indicadores principales del dashboard y conectar la logica con ventas netas.</li>
+      <li><b>Exploracion operativa:</b> abrir `sqlite/02_consultas_exploracion_operativa_sqlite.sql` o `sql/05_consultas_exploracion_operativa.sql` y revisar productividad por tienda.</li>
       <li><b>Criterio de negocio:</b> explicar por que el A/B test no deberia escalar sin repetir un diseno balanceado.</li>
     </ol>
   </section>
@@ -137,7 +137,7 @@ HAVING COUNT(DISTINCT variant) > 1;</div>
 
   <section>
     <h2>Archivos de apoyo para la exposicion</h2>
-    <p><span class="pill">README.md</span><span class="pill">bloque5_dashboard.html</span><span class="pill">sql/02_validar_carga_sql_server.sql</span><span class="pill">sql/05_consultas_exploracion_operativa.sql</span><span class="pill">bloque5_presentacion_EN.pdf</span></p>
+    <p><span class="pill">README.md</span><span class="pill">bloque5_dashboard.html</span><span class="pill">GUIA_SQLITE_VSC.md</span><span class="pill">sqlite/01_validar_carga_sqlite.sql</span><span class="pill">sqlite/02_consultas_exploracion_operativa_sqlite.sql</span><span class="pill">bloque5_presentacion_EN.pdf</span></p>
     <details>
       <summary>Cierre sugerido</summary>
       <p>La solucion separa datos confiables de alertas, documenta supuestos y conecta hallazgos con decisiones operativas.</p>
