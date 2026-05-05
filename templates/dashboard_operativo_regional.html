@@ -166,9 +166,10 @@
         <div class="filter-2"><label>Región</label><select id="region"><option value="">Todas</option></select></div>
         <div class="filter-3"><label>Fecha inicial</label><input id="start" type="date" value="__DEFAULT_START__"></div>
         <div class="filter-3"><label>Fecha final</label><input id="end" type="date" value="__DEFAULT_END__"></div>
-        <div class="filter-4"><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
-        <div class="filter-4"><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Venta por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option><option value="tx">Transacciones</option></select></div>
-        <div class="filter-4"><label>Buscar tienda</label><input id="store-search" type="search" placeholder="Nombre o código"></div>
+        <div class="filter-3"><label>Alerta</label><select id="alert"><option value="">Todas las tiendas</option><option value="low">Debajo del percentil 25 de ventas por metro cuadrado</option></select></div>
+        <div class="filter-3"><label>Ordenar por</label><select id="sort"><option value="gmv_sqm">Venta por metro cuadrado</option><option value="gmv">Ventas netas</option><option value="ticket">Ticket promedio</option><option value="tx">Transacciones</option></select></div>
+        <div class="filter-3"><label>Tienda</label><select id="store-select"><option value="">Todas las tiendas</option></select></div>
+        <div class="filter-3"><label>Buscar texto</label><input id="store-search" type="search" placeholder="Nombre o código"></div>
       </div>
     </div>
   </div>
@@ -407,6 +408,11 @@ function uniqueFromStock(field) {
   return [...new Set(DATA.stock.map(d => d[field]).filter(Boolean))].sort();
 }
 
+function uniqueStores() {
+  return [...new Map(DATA.daily.map(d => [d.store_id, d])).values()]
+    .sort((a,b) => countryName(a.country).localeCompare(countryName(b.country)) || a.format.localeCompare(b.format) || a.store_name.localeCompare(b.store_name));
+}
+
 function addOptions(id, values) {
   const el = byId(id);
   values.forEach(value => {
@@ -415,11 +421,25 @@ function addOptions(id, values) {
   });
 }
 
+function addStoreOptions(id, stores) {
+  const el = byId(id);
+  stores.forEach(store => {
+    const label = `${store.store_name} | ${countryName(store.country)} | ${store.format}`;
+    el.insertAdjacentHTML('beforeend', `<option value="${store.store_id}">${label}</option>`);
+  });
+}
+
+function storeLabel(storeId) {
+  const store = DATA.daily.find(d => d.store_id === storeId);
+  return store ? store.store_name : storeId;
+}
+
 function activeFilters() {
   return {
     country: byId('country').value,
     format: byId('format').value,
     region: byId('region').value,
+    store: byId('store-select').value,
     start: byId('start').value,
     end: byId('end').value,
     alert: byId('alert').value,
@@ -437,6 +457,7 @@ function filtered(start = null, end = null) {
     (!f.country || d.country === f.country) &&
     (!f.format || d.format === f.format) &&
     (!f.region || d.region === f.region) &&
+    (!f.store || d.store_id === f.store) &&
     (!f.search || d.store_name.toLowerCase().includes(f.search) || d.store_id.toLowerCase().includes(f.search)) &&
     d.date >= startDate &&
     d.date <= endDate
@@ -619,7 +640,8 @@ function renderFormatBars(rows) {
 function renderRanking(rows) {
   const base = buildStoreRows(rows);
   currentRanking = applyRankingFilters(base);
-  if (!selectedStoreId && currentRanking.length) selectedStoreId = currentRanking[0].store_id;
+  if (currentRanking.length && !currentRanking.some(d => d.store_id === selectedStoreId)) selectedStoreId = currentRanking[0].store_id;
+  if (!currentRanking.length) selectedStoreId = null;
   byId('ranking-count').textContent = currentRanking.length + ' tiendas';
   byId('ranking-mode').textContent = byId('alert').value === 'low' ? 'Solo bajo rendimiento' : 'Todas';
   const body = currentRanking.slice(0, 80).map((d, index) => `
@@ -709,6 +731,7 @@ function renderFilterSummary(rows, rankingRows) {
   if (f.country) chips.push('País: ' + countryName(f.country));
   if (f.format) chips.push('Formato: ' + f.format);
   if (f.region) chips.push('Región: ' + f.region);
+  if (f.store) chips.push('Tienda: ' + storeLabel(f.store));
   if (f.alert) chips.push('Bajo rendimiento');
   if (f.search) chips.push('Búsqueda: ' + byId('store-search').value);
   if (f.tableSearch) chips.push('Tabla: ' + byId('table-search').value);
@@ -716,7 +739,7 @@ function renderFilterSummary(rows, rankingRows) {
   byId('period-label').textContent = `${byId('start').value} a ${byId('end').value}`;
   byId('insight-stores').textContent = fmtNumber(new Set(rows.map(d => d.store_id)).size);
   byId('insight-low').textContent = fmtNumber(rankingRows.filter(d => d.low).length);
-  byId('insight-selected').textContent = selectedStoreId || 'Ninguna';
+  byId('insight-selected').textContent = selectedStoreId ? storeLabel(selectedStoreId) : 'Ninguna';
 }
 
 function exportRanking() {
@@ -771,7 +794,8 @@ addOptions('country', uniqueFromDaily('country'));
 addOptions('format', uniqueFromDaily('format'));
 addOptions('region', uniqueFromDaily('region'));
 addOptions('stock-category', uniqueFromStock('category'));
-['country','format','region','start','end','alert','sort','stock-category','stock-scope'].forEach(id => byId(id).addEventListener('change', update));
+addStoreOptions('store-select', uniqueStores());
+['country','format','region','store-select','start','end','alert','sort','stock-category','stock-scope'].forEach(id => byId(id).addEventListener('change', update));
 ['store-search','table-search'].forEach(id => byId(id).addEventListener('input', update));
 byId('metric-gmv').addEventListener('click', () => setMetric('gmv'));
 byId('metric-tx').addEventListener('click', () => setMetric('tx'));
@@ -787,7 +811,7 @@ byId('last-90').addEventListener('click', () => {
   update();
 });
 byId('reset').addEventListener('click', () => {
-  ['country','format','region','alert','sort','store-search','table-search','stock-category'].forEach(id => {
+  ['country','format','region','store-select','alert','sort','store-search','table-search','stock-category'].forEach(id => {
     const el = byId(id);
     el.value = id === 'sort' ? 'gmv_sqm' : '';
   });

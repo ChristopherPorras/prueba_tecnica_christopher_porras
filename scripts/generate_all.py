@@ -1981,7 +1981,7 @@ El objetivo fue convertir datasets transaccionales en una historia analitica def
 | Datos | {len(tx):,} transacciones, {len(dfs['items']):,} items, {len(dfs['stores']):,} tiendas, {len(dfs['products']):,} productos |
 | Periodo | {tx['transaction_date'].min().date()} a {tx['transaction_date'].max().date()} |
 | Base local | `data/retail_prueba_tecnica.sqlite` |
-| Dashboard | `bloque5_dashboard.html` |
+| Dashboard | `bloque5_dashboard.html` con filtros desplegables por país, formato, región, tienda y rango de fechas |
 | Presentacion | `bloque5_presentacion_EN.pdf` |
 | SQL ejecutable | `sqlite/03_bloque1_queries_sqlite.sql` |
 
@@ -2064,7 +2064,7 @@ Si aparecen mensajes como `Incorrect syntax near 'LIMIT'` con `owner: mssql`, no
 | `bloque3_analisis.html` | Analisis exploratorio, visualizaciones y prueba A/B |
 | `bloque3_visualizaciones/` | Graficos SVG usados en el analisis |
 | `bloque4_kpi_framework.md` | Framework de indicadores y metrica principal |
-| `bloque5_dashboard.html` | Dashboard operativo regional interactivo |
+| `bloque5_dashboard.html` | Dashboard operativo regional interactivo con selector de todas las tiendas o una tienda específica |
 | `bloque5_presentacion_EN.pdf` | Presentacion ejecutiva en ingles |
 | `apoyo_exposicion_tecnica.html` | Apoyo para explicar la solucion durante la entrevista |
 | `GUIA_SQLITE_VSC.md` | Guia practica para SQLite en VS Code |
