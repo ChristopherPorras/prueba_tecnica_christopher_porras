@@ -47,6 +47,7 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `GUIA_SQLITE_VSC.md`: pasos para crear y abrir la base SQLite local desde VS Code.
 - `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
 - `sqlite/`: scripts SQLite para validar carga y ejecutar consultas de exploracion operativa.
+- `scripts/run_sqlite_block1.py`: ejecuta las seis consultas del Bloque 1 y guarda resultados como tablas SQLite.
 - `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
 - `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
 - `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.

@@ -90,6 +90,7 @@ Archivos:
 
 - `sqlite/01_validar_carga_sqlite.sql`
 - `sqlite/02_consultas_exploracion_operativa_sqlite.sql`
+- `sqlite/03_bloque1_queries_sqlite.sql`
 
 Si tu extension de SQLite permite abrir archivos `.sql`, abre esos archivos y ejecuta las consultas por bloques.
 
@@ -99,6 +100,45 @@ Si prefieres terminal, copia una consulta del archivo y ejecutala con:
 python scripts/query_sqlite.py "PEGAR_CONSULTA_AQUI"
 ```
 
-## 5. Criterio tecnico para usar SQLite
+## 5. Ejecutar todo el Bloque 1 y verlo en SQLite Viewer
+
+Ejecuta:
+
+```bash
+python scripts/run_sqlite_block1.py
+```
+
+En Windows:
+
+```powershell
+py scripts\run_sqlite_block1.py
+```
+
+El comando crea estas tablas dentro de `data/retail_prueba_tecnica.sqlite`:
+
+- `bloque1_q1_ventas_comparables`
+- `bloque1_q2_productividad_tienda`
+- `bloque1_q3_cohortes_lealtad`
+- `bloque1_q4_retorno_margen_proveedor_categoria`
+- `bloque1_q5_posibles_quiebres_stock`
+- `bloque1_q6_promociones_ticket_volumen`
+
+La tabla de posibles quiebres de stock puede tardar alrededor de 30 a 60 segundos porque revisa calendario por tienda-producto. Despues de creada, abrirla desde SQLite Viewer es inmediato.
+
+Para verlas en SQLite Viewer:
+
+1. Abre `data/retail_prueba_tecnica.sqlite`.
+2. Refresca la conexion o vuelve a abrir el archivo.
+3. Expande Tables.
+4. Abre cualquiera de las tablas `bloque1_q...`.
+
+Para consultar una tabla del Bloque 1 desde terminal:
+
+```powershell
+py scripts\query_sqlite.py "SELECT * FROM bloque1_q1_ventas_comparables LIMIT 20;"
+py scripts\query_sqlite.py "SELECT * FROM bloque1_q2_productividad_tienda WHERE alerta_rendimiento = 'BAJO_RENDIMIENTO';"
+```
+
+## 6. Criterio tecnico para usar SQLite
 
 SQLite permite demostrar el trabajo de base de datos sin permisos de administrador y sin depender de un servidor local. Para produccion usaria SQL Server, BigQuery u otro motor corporativo; para la prueba local, el objetivo es mostrar modelo, carga, validacion y consultas de negocio con una base real.

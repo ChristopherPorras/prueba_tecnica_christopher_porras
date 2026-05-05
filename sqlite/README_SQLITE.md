@@ -50,6 +50,32 @@ py scripts\query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 | --- | --- |
 | `01_validar_carga_sqlite.sql` | Valida conteos, fechas, diferencias entre transaccion e items y calidad A/B. |
 | `02_consultas_exploracion_operativa_sqlite.sql` | Consultas cortas para explicar ventas netas, productividad y recomendacion operativa. |
+| `03_bloque1_queries_sqlite.sql` | Crea las seis tablas de resultado del Bloque 1. |
+
+## Bloque 1 completo
+
+Ejecuta:
+
+```bash
+python scripts/run_sqlite_block1.py
+```
+
+En Windows:
+
+```powershell
+py scripts\run_sqlite_block1.py
+```
+
+Despues refresca SQLite Viewer y abre estas tablas:
+
+- `bloque1_q1_ventas_comparables`
+- `bloque1_q2_productividad_tienda`
+- `bloque1_q3_cohortes_lealtad`
+- `bloque1_q4_retorno_margen_proveedor_categoria`
+- `bloque1_q5_posibles_quiebres_stock`
+- `bloque1_q6_promociones_ticket_volumen`
+
+La consulta de posibles quiebres de stock es la mas pesada porque revisa dias sin venta por tienda-producto. Es normal que tarde alrededor de 30 a 60 segundos al crear la tabla.
 
 ## Diferencia contra SQL Server
 
