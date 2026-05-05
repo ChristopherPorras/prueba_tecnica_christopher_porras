@@ -8,8 +8,9 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 2. Lee `bloque0_auditoria.md`, `bloque2_decisiones.md` y `bloque4_kpi_framework.md`.
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
-5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
-6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html`, `GUIA_SQLITE_VSC.md` y `GUIA_SQL_SERVER_VSC.md`.
+5. Crea la base SQLite con `python scripts/create_sqlite_db.py`.
+6. Ejecuta `python scripts/run_sqlite_block1.py` para guardar los resultados del Bloque 1 como tablas.
+7. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html` y `GUIA_SQLITE_VSC.md`.
 
 ## Como regenerar todo
 
@@ -44,16 +45,10 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
 - `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
-- `GUIA_SQLITE_VSC.md`: pasos para crear y abrir la base SQLite local desde VS Code.
-- `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
-- `sqlite/`: scripts SQLite para validar carga y ejecutar consultas de exploracion operativa.
+- `GUIA_SQLITE_VSC.md`: pasos para crear, consultar y abrir la base SQLite local desde VS Code.
+- `sqlite/`: scripts SQLite para validar carga, ejecutar Bloque 1 y responder pruebas en vivo.
 - `scripts/run_sqlite_block1.py`: ejecuta las seis consultas del Bloque 1 y guarda resultados como tablas SQLite.
-- `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
-- `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
-- `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
-- `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
-- `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
-- `sql/05_consultas_exploracion_operativa.sql`: consultas cortas de revision operativa y defensa tecnica.
+- `scripts/query_sqlite.py`: ejecuta cualquier consulta SQLite desde terminal y opcionalmente guarda resultados como tablas.
 
 ## Metodologia y validacion
 
@@ -76,5 +71,5 @@ Modificaciones humanas/criterio aplicado:
 
 - Se eligieron ventas netas restando devoluciones.
 - Se excluyeron tiendas con doble asignacion del A/B test.
-- Se trato el dashboard como HTML autocontenido porque la maquina de trabajo no puede instalar Power BI/MSSQL local.
+- Se priorizo SQLite porque permite ejecutar base de datos local sin permisos de administrador.
 - Se documento que los gaps de stock son senales operativas, no inventario real.

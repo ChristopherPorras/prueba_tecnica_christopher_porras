@@ -87,10 +87,10 @@
   <section>
     <h2>Ruta de exposicion tecnica</h2>
     <ol class="talk-track">
-      <li><b>Validacion de carga:</b> abrir `sqlite/01_validar_carga_sqlite.sql` o `sql/02_validar_carga_sql_server.sql` y confirmar conteos, fechas y reglas basicas.</li>
+      <li><b>Validacion de carga:</b> abrir `sqlite/01_validar_carga_sqlite.sql` y confirmar conteos, fechas y reglas basicas.</li>
       <li><b>Auditoria de consistencia:</b> revisar diferencias entre total de transaccion y suma de items para justificar decisiones de metrica.</li>
       <li><b>Indicadores del dashboard:</b> revisar la consulta de indicadores principales del dashboard y conectar la logica con ventas netas.</li>
-      <li><b>Exploracion operativa:</b> abrir `sqlite/02_consultas_exploracion_operativa_sqlite.sql` o `sql/05_consultas_exploracion_operativa.sql` y revisar productividad por tienda.</li>
+      <li><b>Exploracion operativa:</b> abrir `sqlite/02_consultas_exploracion_operativa_sqlite.sql` y revisar productividad por tienda.</li>
       <li><b>Criterio de negocio:</b> explicar por que el A/B test no deberia escalar sin repetir un diseno balanceado.</li>
     </ol>
   </section>
@@ -99,15 +99,15 @@
     <h2>Consultas de revision rapida</h2>
     <p>Consultas cortas para revisar conteos, ventas netas y calidad experimental.</p>
     <div class="script">-- 1. Conteo base
-SELECT COUNT(*) AS transacciones FROM dbo.transactions;
+SELECT COUNT(*) AS transacciones FROM transactions;
 
 -- 2. Ventas netas
 SELECT SUM(CASE WHEN status = 'RETURNED' THEN -total_amount ELSE total_amount END) AS ventas_netas
-FROM dbo.transactions;
+FROM transactions;
 
 -- 3. Calidad: asignación A/B ambigua
 SELECT store_id, COUNT(DISTINCT variant) AS variantes
-FROM dbo.store_promotions
+FROM store_promotions
 GROUP BY store_id
 HAVING COUNT(DISTINCT variant) > 1;</div>
   </section>
@@ -137,7 +137,7 @@ HAVING COUNT(DISTINCT variant) > 1;</div>
 
   <section>
     <h2>Archivos de apoyo para la exposicion</h2>
-    <p><span class="pill">README.md</span><span class="pill">bloque5_dashboard.html</span><span class="pill">GUIA_SQLITE_VSC.md</span><span class="pill">sqlite/01_validar_carga_sqlite.sql</span><span class="pill">sqlite/02_consultas_exploracion_operativa_sqlite.sql</span><span class="pill">bloque5_presentacion_EN.pdf</span></p>
+    <p><span class="pill">README.md</span><span class="pill">bloque5_dashboard.html</span><span class="pill">GUIA_SQLITE_VSC.md</span><span class="pill">scripts/run_sqlite_block1.py</span><span class="pill">sqlite/03_bloque1_queries_sqlite.sql</span><span class="pill">sqlite/04_consultas_en_vivo_sqlite.sql</span><span class="pill">bloque5_presentacion_EN.pdf</span></p>
     <details>
       <summary>Cierre sugerido</summary>
       <p>La solucion separa datos confiables de alertas, documenta supuestos y conecta hallazgos con decisiones operativas.</p>

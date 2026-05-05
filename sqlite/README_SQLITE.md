@@ -51,6 +51,7 @@ py scripts\query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 | `01_validar_carga_sqlite.sql` | Valida conteos, fechas, diferencias entre transaccion e items y calidad A/B. |
 | `02_consultas_exploracion_operativa_sqlite.sql` | Consultas cortas para explicar ventas netas, productividad y recomendacion operativa. |
 | `03_bloque1_queries_sqlite.sql` | Crea las seis tablas de resultado del Bloque 1. |
+| `04_consultas_en_vivo_sqlite.sql` | Consultas listas para copiar durante pruebas en vivo. |
 
 ## Bloque 1 completo
 
@@ -77,6 +78,14 @@ Despues refresca SQLite Viewer y abre estas tablas:
 
 La consulta de posibles quiebres de stock es la mas pesada porque revisa dias sin venta por tienda-producto. Es normal que tarde alrededor de 30 a 60 segundos al crear la tabla.
 
-## Diferencia contra SQL Server
+## Guardar cualquier resultado para SQLite Viewer
 
-La extension MSSQL de VS Code no se usa para SQLite. MSSQL pide `Server name`, autenticacion y certificado porque se conecta a un servidor. SQLite abre un archivo local, por eso la conexion es simplemente la ruta del archivo `.sqlite`.
+```powershell
+py scripts\query_sqlite.py "SELECT format, COUNT(*) AS tiendas FROM stores GROUP BY format;" --save prueba_tiendas_por_formato
+```
+
+Luego refresca SQLite Viewer y abre la tabla creada.
+
+## Conexion
+
+SQLite abre directamente el archivo local `.sqlite`; no necesita servidor, autenticacion ni certificado.

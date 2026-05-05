@@ -1,6 +1,6 @@
 # Guia rapida: SQLite en VS Code
 
-SQLite funciona diferente a SQL Server: no hay `Server name`, usuario, password ni certificado. La base es un archivo local.
+SQLite no usa `Server name`, usuario, password ni certificado. La base es un archivo local.
 
 ## 1. Crear la base
 
@@ -51,6 +51,8 @@ Forma recomendada, sin depender de `sqlite-utils`:
 ```bash
 python scripts/query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 python scripts/query_sqlite.py "SELECT ROUND(SUM(ventas_netas), 2) AS ventas_netas FROM v_transacciones_ventas_netas;"
+python scripts/query_sqlite.py --tables
+python scripts/query_sqlite.py --schema transactions
 ```
 
 En Windows, si `python` no responde:
@@ -58,6 +60,8 @@ En Windows, si `python` no responde:
 ```powershell
 py scripts\query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 py scripts\query_sqlite.py "SELECT ROUND(SUM(ventas_netas), 2) AS ventas_netas FROM v_transacciones_ventas_netas;"
+py scripts\query_sqlite.py --tables
+py scripts\query_sqlite.py --schema transactions
 ```
 
 Para una consulta de varias lineas en PowerShell:
@@ -91,6 +95,7 @@ Archivos:
 - `sqlite/01_validar_carga_sqlite.sql`
 - `sqlite/02_consultas_exploracion_operativa_sqlite.sql`
 - `sqlite/03_bloque1_queries_sqlite.sql`
+- `sqlite/04_consultas_en_vivo_sqlite.sql`
 
 Si tu extension de SQLite permite abrir archivos `.sql`, abre esos archivos y ejecuta las consultas por bloques.
 
@@ -99,6 +104,14 @@ Si prefieres terminal, copia una consulta del archivo y ejecutala con:
 ```bash
 python scripts/query_sqlite.py "PEGAR_CONSULTA_AQUI"
 ```
+
+Para guardar el resultado de cualquier consulta como tabla visible en SQLite Viewer:
+
+```powershell
+py scripts\query_sqlite.py "SELECT format, COUNT(*) AS tiendas FROM stores GROUP BY format;" --save prueba_tiendas_por_formato
+```
+
+Luego refresca SQLite Viewer y abre la tabla `prueba_tiendas_por_formato`.
 
 ## 5. Ejecutar todo el Bloque 1 y verlo en SQLite Viewer
 
@@ -139,6 +152,17 @@ py scripts\query_sqlite.py "SELECT * FROM bloque1_q1_ventas_comparables LIMIT 20
 py scripts\query_sqlite.py "SELECT * FROM bloque1_q2_productividad_tienda WHERE alerta_rendimiento = 'BAJO_RENDIMIENTO';"
 ```
 
-## 6. Criterio tecnico para usar SQLite
+## 6. Pruebas en vivo
 
-SQLite permite demostrar el trabajo de base de datos sin permisos de administrador y sin depender de un servidor local. Para produccion usaria SQL Server, BigQuery u otro motor corporativo; para la prueba local, el objetivo es mostrar modelo, carga, validacion y consultas de negocio con una base real.
+Para cualquier prueba que pidan:
+
+1. Identificar columnas con `py scripts\query_sqlite.py --schema nombre_tabla`.
+2. Ejecutar la consulta con `py scripts\query_sqlite.py "SELECT ..."` para verla en terminal.
+3. Si quieren verla en SQLite Viewer, repetir con `--save nombre_resultado`.
+4. Refrescar SQLite Viewer y abrir la tabla guardada.
+
+Consultas listas para copiar estan en `sqlite/04_consultas_en_vivo_sqlite.sql`.
+
+## 7. Criterio tecnico para usar SQLite
+
+SQLite permite demostrar el trabajo de base de datos sin permisos de administrador y sin depender de un servidor local. Para la prueba local, el objetivo es mostrar modelo, carga, validacion y consultas de negocio con una base real.

@@ -1413,15 +1413,18 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
     <details class="logic" open>
       <summary>Explicacion tecnica y consulta base</summary>
       <p>Los indicadores usan ventas netas: una venta completada suma y una devolucion resta. El ticket promedio divide ventas netas entre transacciones. Las ventas netas por metro cuadrado dividen las ventas netas entre el tamano de las tiendas incluidas por los filtros.</p>
-      <pre><code>WITH ventas_por_tienda AS (
+	      <pre><code>WITH parametros AS (
+  SELECT DATE('{default_start}') AS fecha_inicial, DATE('{default_end}') AS fecha_final
+),
+ventas_por_tienda AS (
   SELECT
     s.store_id,
     s.size_sqm,
     SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
     COUNT(DISTINCT t.transaction_id) AS transacciones
-  FROM dbo.transactions t
-  JOIN dbo.stores s ON s.store_id = t.store_id
-  WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
+  FROM transactions t
+  JOIN stores s ON s.store_id = t.store_id
+  WHERE DATE(t.transaction_date) BETWEEN (SELECT fecha_inicial FROM parametros) AND (SELECT fecha_final FROM parametros)
   GROUP BY s.store_id, s.size_sqm
 )
 SELECT
@@ -1440,16 +1443,14 @@ FROM ventas_por_tienda;</code></pre>
         <details class="logic">
           <summary>Explicacion tecnica y consulta usada</summary>
           <p>La grafica agrupa las ventas netas por semana y por formato. La logica tecnica convierte cada transaccion a venta neta, une la tienda para obtener el formato y agrega por inicio de semana.</p>
-          <pre><code>SET DATEFIRST 1; -- lunes como primer dia de la semana
-
-SELECT
-  DATEADD(day, 1 - DATEPART(weekday, CAST(t.transaction_date AS date)), CAST(t.transaction_date AS date)) AS semana,
+	          <pre><code>SELECT
+  DATE(t.transaction_date, '-' || ((CAST(strftime('%w', t.transaction_date) AS INTEGER) + 6) % 7) || ' days') AS semana,
   s.format AS formato,
   SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas
-FROM dbo.transactions t
-JOIN dbo.stores s ON s.store_id = t.store_id
-WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
-GROUP BY DATEADD(day, 1 - DATEPART(weekday, CAST(t.transaction_date AS date)), CAST(t.transaction_date AS date)), s.format
+FROM transactions t
+JOIN stores s ON s.store_id = t.store_id
+WHERE DATE(t.transaction_date) BETWEEN DATE('{default_start}') AND DATE('{default_end}')
+GROUP BY semana, s.format
 ORDER BY semana, formato;</code></pre>
         </details>
       </section>
@@ -1467,24 +1468,39 @@ ORDER BY semana, formato;</code></pre>
     s.size_sqm,
     SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas,
     COUNT(DISTINCT t.transaction_id) AS transacciones
-  FROM dbo.transactions t
-  JOIN dbo.stores s ON s.store_id = t.store_id
-  WHERE t.transaction_date BETWEEN @fecha_inicial AND @fecha_final
+  FROM transactions t
+  JOIN stores s ON s.store_id = t.store_id
+  WHERE DATE(t.transaction_date) BETWEEN DATE('{default_start}') AND DATE('{default_end}')
   GROUP BY s.store_id, s.store_name, s.format, s.size_sqm
 ),
 scored AS (
   SELECT
     *,
     ventas_netas / NULLIF(size_sqm, 0) AS ventas_netas_por_metro_cuadrado,
-    ventas_netas / NULLIF(transacciones, 0) AS ticket_promedio,
-    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ventas_netas / NULLIF(size_sqm, 0))
-      OVER (PARTITION BY format) AS percentil_25_formato
+    ventas_netas / NULLIF(transacciones, 0) AS ticket_promedio
   FROM ventas_tienda
+),
+ordenado AS (
+  SELECT *,
+    ROW_NUMBER() OVER (PARTITION BY format ORDER BY ventas_netas_por_metro_cuadrado) AS posicion_formato,
+    COUNT(*) OVER (PARTITION BY format) AS tiendas_formato
+  FROM scored
+),
+percentil AS (
+  SELECT
+    format,
+    MAX(CASE
+      WHEN posicion_formato = CAST((tiendas_formato - 1) * 0.25 AS INTEGER) + 1
+      THEN ventas_netas_por_metro_cuadrado
+    END) AS percentil_25_formato
+  FROM ordenado
+  GROUP BY format
 )
-SELECT *,
-  CASE WHEN ventas_netas_por_metro_cuadrado < percentil_25_formato THEN 'BAJO_RENDIMIENTO' ELSE 'OK' END AS alerta
-FROM scored
-ORDER BY format, ventas_netas_por_metro_cuadrado DESC;</code></pre>
+SELECT o.*,
+  CASE WHEN o.ventas_netas_por_metro_cuadrado < p.percentil_25_formato THEN 'BAJO_RENDIMIENTO' ELSE 'OK' END AS alerta
+FROM ordenado o
+JOIN percentil p ON p.format = o.format
+ORDER BY o.format, o.ventas_netas_por_metro_cuadrado DESC;</code></pre>
         </details>
       </section>
       <section>
@@ -1496,9 +1512,9 @@ ORDER BY format, ventas_netas_por_metro_cuadrado DESC;</code></pre>
           <pre><code>WITH ventas_lealtad AS (
   SELECT
     customer_id,
-    DATEFROMPARTS(YEAR(transaction_date), MONTH(transaction_date), 1) AS mes_compra,
+    DATE(transaction_date, 'start of month') AS mes_compra,
     total_amount
-  FROM dbo.transactions
+  FROM transactions
   WHERE loyalty_card = 1 AND customer_id IS NOT NULL AND status = 'COMPLETED'
 ),
 primera_compra AS (
@@ -1509,7 +1525,8 @@ primera_compra AS (
 actividad AS (
   SELECT
     p.mes_cohorte,
-    DATEDIFF(month, p.mes_cohorte, v.mes_compra) AS mes_relativo,
+    (CAST(strftime('%Y', v.mes_compra) AS INTEGER) - CAST(strftime('%Y', p.mes_cohorte) AS INTEGER)) * 12
+      + (CAST(strftime('%m', v.mes_compra) AS INTEGER) - CAST(strftime('%m', p.mes_cohorte) AS INTEGER)) AS mes_relativo,
     v.customer_id,
     v.total_amount
   FROM ventas_lealtad v
@@ -1543,22 +1560,24 @@ ORDER BY mes_cohorte;</code></pre>
   SELECT
     t.store_id,
     ti.item_id,
-    CAST(t.transaction_date AS date) AS fecha,
+    DATE(t.transaction_date) AS fecha,
     SUM(ti.quantity * ti.unit_price) AS ventas
-  FROM dbo.transaction_items ti
-  JOIN dbo.transactions t ON t.transaction_id = ti.transaction_id
+  FROM transaction_items ti
+  JOIN transactions t ON t.transaction_id = ti.transaction_id
   WHERE t.status = 'COMPLETED'
-  GROUP BY t.store_id, ti.item_id, CAST(t.transaction_date AS date)
+  GROUP BY t.store_id, ti.item_id, DATE(t.transaction_date)
 ),
 gaps_priorizados AS (
-  SELECT TOP 20
+  SELECT
     store_id,
     item_id,
     MAX(fecha) AS ultima_fecha_con_venta,
-    DATEDIFF(day, MAX(fecha), '2025-06-30') AS dias_sin_venta
+    CAST(JULIANDAY('2025-06-30') - JULIANDAY(MAX(fecha)) AS INTEGER) AS dias_sin_venta
   FROM ventas_diarias
   GROUP BY store_id, item_id
-  HAVING DATEDIFF(day, MAX(fecha), '2025-06-30') >= 3
+  HAVING JULIANDAY('2025-06-30') - JULIANDAY(MAX(fecha)) >= 3
+  ORDER BY dias_sin_venta DESC
+  LIMIT 20
 )
 SELECT
   g.store_id,
@@ -1570,11 +1589,11 @@ SELECT
    FROM ventas_diarias v
    WHERE v.store_id = g.store_id
      AND v.item_id = g.item_id
-     AND v.fecha BETWEEN DATEADD(day, -14, DATEADD(day, 1, g.ultima_fecha_con_venta)) AND g.ultima_fecha_con_venta)
+     AND v.fecha BETWEEN DATE(g.ultima_fecha_con_venta, '-13 day') AND g.ultima_fecha_con_venta)
    * g.dias_sin_venta AS ventas_estimadas_perdidas
 FROM gaps_priorizados g
-JOIN dbo.stores s ON s.store_id = g.store_id
-JOIN dbo.products p ON p.item_id = g.item_id
+JOIN stores s ON s.store_id = g.store_id
+JOIN products p ON p.item_id = g.item_id
 ORDER BY ventas_estimadas_perdidas DESC;</code></pre>
         </details>
       </section>
@@ -1840,8 +1859,9 @@ Repositorio con la solucion completa de la prueba tecnica: auditoria de calidad,
 2. Lee `bloque0_auditoria.md`, `bloque2_decisiones.md` y `bloque4_kpi_framework.md`.
 3. Abre `bloque3_analisis.html` y `bloque5_dashboard.html` en el navegador o con Live Preview de VS Code.
 4. Abre `bloque2_modelo.pdf` y `bloque5_presentacion_EN.pdf`.
-5. Revisa `bloque1_queries.sql` para las queries comentadas en BigQuery Standard SQL.
-6. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html`, `GUIA_SQLITE_VSC.md` y `GUIA_SQL_SERVER_VSC.md`.
+5. Crea la base SQLite con `python scripts/create_sqlite_db.py`.
+6. Ejecuta `python scripts/run_sqlite_block1.py` para guardar los resultados del Bloque 1 como tablas.
+7. Para preparar la exposicion, abre `apoyo_exposicion_tecnica.html` y `GUIA_SQLITE_VSC.md`.
 
 ## Como regenerar todo
 
@@ -1876,15 +1896,10 @@ En una computadora donde no puedas instalar programas, puedes revisar todos los 
 - `bloque5_dashboard.html`: dashboard operativo estatico e interactivo.
 - `bloque5_presentacion_EN.pdf`: presentacion ejecutiva en ingles.
 - `apoyo_exposicion_tecnica.html`: apoyo de exposicion con historia ejecutiva, ruta tecnica y criterios de defensa.
-- `GUIA_SQLITE_VSC.md`: pasos para crear y abrir la base SQLite local desde VS Code.
-- `GUIA_SQL_SERVER_VSC.md`: pasos para conectar SQL Server en VS Code y ejecutar consultas.
-- `sqlite/`: scripts SQLite para validar carga y ejecutar consultas de exploracion operativa.
-- `sql/00_crear_tablas_sql_server.sql`: crea la base y tablas en SQL Server.
-- `sql/01_cargar_csv_sql_server.sql`: carga los CSV a SQL Server.
-- `sql/02_validar_carga_sql_server.sql`: valida conteos y reglas basicas.
-- `sql/03_bloque1_queries_sql_server.sql`: version T-SQL ejecutable del Bloque 1.
-- `sql/04_consultas_dashboard_sql_server.sql`: consultas que explican cada componente del dashboard.
-- `sql/05_consultas_exploracion_operativa.sql`: consultas cortas de revision operativa y defensa tecnica.
+- `GUIA_SQLITE_VSC.md`: pasos para crear, consultar y abrir la base SQLite local desde VS Code.
+- `sqlite/`: scripts SQLite para validar carga, ejecutar Bloque 1 y responder pruebas en vivo.
+- `scripts/run_sqlite_block1.py`: ejecuta las seis consultas del Bloque 1 y guarda resultados como tablas SQLite.
+- `scripts/query_sqlite.py`: ejecuta cualquier consulta SQLite desde terminal y opcionalmente guarda resultados como tablas.
 
 ## Metodologia y validacion
 
@@ -1907,7 +1922,7 @@ Modificaciones humanas/criterio aplicado:
 
 - Se eligieron ventas netas restando devoluciones.
 - Se excluyeron tiendas con doble asignacion del A/B test.
-- Se trato el dashboard como HTML autocontenido porque la maquina de trabajo no puede instalar Power BI/MSSQL local.
+- Se priorizo SQLite porque permite ejecutar base de datos local sin permisos de administrador.
 - Se documento que los gaps de stock son senales operativas, no inventario real.
 """
     (ROOT / "README.md").write_text(text, encoding="utf-8")
@@ -1934,67 +1949,6 @@ def write_support_files() -> None:
         ),
         encoding="utf-8",
     )
-    sqlserver_note = """# SQL Server desde VS Code
-
-Esta carpeta permite presentar la prueba tecnica como trabajo de base de datos usando la extension MSSQL de VS Code.
-
-## Requisito
-
-La extension MSSQL de VS Code es solo el cliente. Necesitas conectarte a un SQL Server existente: servidor de la empresa, Azure SQL, una maquina remota o un SQL Server ya instalado por TI. No necesitas instalar SQL Server localmente en tu computadora de trabajo.
-
-## Orden recomendado
-
-1. Abre VS Code en la carpeta del repo.
-2. Instala o abre la extension **SQL Server (MSSQL)**.
-3. Crea una conexion a tu servidor desde el panel de la extension.
-4. Ejecuta los archivos en este orden:
-
-| Orden | Archivo | Que hace |
-| --- | --- | --- |
-| 1 | `00_crear_tablas_sql_server.sql` | Crea la base `RetailPruebaTecnica`, tablas e indices. |
-| 2 | `01_cargar_csv_sql_server.sql` | Carga los CSV de `data/raw` usando staging tables. |
-| 3 | `02_validar_carga_sql_server.sql` | Valida conteos, fechas, diferencias y asignaciones A/B. |
-| 4 | `03_bloque1_queries_sql_server.sql` | Ejecuta las seis queries avanzadas del Bloque 1 en T-SQL. |
-| 5 | `04_consultas_dashboard_sql_server.sql` | Consultas usadas para explicar cada componente del dashboard. |
-| 6 | `05_consultas_exploracion_operativa.sql` | Consultas cortas de revision operativa y defensa tecnica. |
-
-## Punto importante sobre carga de CSV
-
-`BULK INSERT` lee archivos desde la maquina donde corre SQL Server, no desde VS Code. Si el servidor no puede leer tu carpeta local:
-
-- usa el asistente **Import Flat File** de la extension MSSQL si esta disponible en tu entorno;
-- o copia los CSV a una ruta compartida/accesible para el servidor;
-- o pide una base temporal y sube los CSV con la herramienta corporativa permitida.
-
-## Como ejecutar una query en VS Code
-
-1. Abre un archivo `.sql`.
-2. Selecciona la conexion en la parte superior del editor.
-3. Selecciona la base `RetailPruebaTecnica`.
-4. Ejecuta todo el archivo o selecciona una consulta especifica.
-5. Revisa los resultados en el panel inferior.
-
-## Ruta corta de revision
-
-Si tienes poco tiempo, ejecuta solo:
-
-1. `02_validar_carga_sql_server.sql`
-2. `05_consultas_exploracion_operativa.sql`
-
-Con eso muestras conteos, ventas netas, productividad, calidad del A/B test y una recomendacion priorizada.
-
-## Equivalencia con BigQuery
-
-El archivo `bloque1_queries.sql` conserva la version BigQuery Standard SQL pedida por la prueba. El archivo `03_bloque1_queries_sql_server.sql` es la version ejecutable en SQL Server.
-
-Traducciones principales:
-
-- `DATE_TRUNC(..., MONTH)` -> `DATEFROMPARTS(YEAR(fecha), MONTH(fecha), 1)`
-- `DATE_DIFF(a, b, MONTH)` -> `DATEDIFF(MONTH, b, a)`
-- `SAFE_DIVIDE(x, y)` -> `x / NULLIF(y, 0)`
-- `LOGICAL_OR` -> `MAX(CASE WHEN condicion THEN 1 ELSE 0 END)`
-"""
-    (ROOT / "sql" / "README_SQL_SERVER.md").write_text(sqlserver_note, encoding="utf-8")
 
 
 def main() -> None:
