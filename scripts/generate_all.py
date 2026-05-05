@@ -233,7 +233,7 @@ def write_audit(dfs: dict[str, pd.DataFrame]) -> dict[str, object]:
         "- Las tiendas con doble asignacion experimental se excluyen del resultado estadistico principal.",
         "- Las ausencias de venta son senales operativas, no prueba definitiva de quiebre: se priorizan por ventas estimadas perdidas y velocidad previa.",
     ]
-    (ROOT / "bloque0_auditoria.md").write_text("\n".join(text), encoding="utf-8")
+    (ROOT / "bloque0_auditoria.md").write_text("\n".join(text) + "\n", encoding="utf-8")
     return {
         "amount_mismatches": amount_mismatches,
         "store_gaps": store_gaps,
@@ -416,18 +416,26 @@ def stock_gaps(dfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
         .reset_index()
         .sort_values(["store_id", "item_id", "transaction_date"])
     )
-    max_date = completed["transaction_date"].max().normalize()
+    daily["transaction_date"] = daily["transaction_date"].dt.normalize()
+    max_day = np.datetime64(completed["transaction_date"].max().normalize().date())
     rows = []
     for (store_id, item_id), group in daily.groupby(["store_id", "item_id"], sort=False):
-        dates = group["transaction_date"].tolist()
         meta = group.iloc[0]
-        for previous_date, next_date in zip(dates, dates[1:]):
-            gap_days = (next_date - previous_date).days - 1
+        date_days = group["transaction_date"].to_numpy(dtype="datetime64[D]")
+        gmv_values = group["gmv"].to_numpy(dtype=float)
+
+        def prior_14_day_average(gap_start_day: np.datetime64) -> float:
+            window_start = gap_start_day - np.timedelta64(14, "D")
+            left = np.searchsorted(date_days, window_start, side="left")
+            right = np.searchsorted(date_days, gap_start_day, side="left")
+            return float(gmv_values[left:right].sum() / 14)
+
+        for previous_day, next_day in zip(date_days, date_days[1:]):
+            gap_days = int((next_day - previous_day) / np.timedelta64(1, "D")) - 1
             if gap_days >= 3:
-                gap_start = previous_date + pd.Timedelta(days=1)
-                gap_end = next_date - pd.Timedelta(days=1)
-                before = group[(group["transaction_date"] >= gap_start - pd.Timedelta(days=14)) & (group["transaction_date"] < gap_start)]
-                avg_daily = before["gmv"].sum() / 14 if not before.empty else 0
+                gap_start_day = previous_day + np.timedelta64(1, "D")
+                gap_end_day = next_day - np.timedelta64(1, "D")
+                avg_daily = prior_14_day_average(gap_start_day)
                 rows.append(
                     [
                         store_id,
@@ -436,20 +444,18 @@ def stock_gaps(dfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                         meta["category"],
                         meta["vendor_id"],
                         meta["vendor_name"] if pd.notna(meta["vendor_name"]) else "SIN_VENDOR",
-                        gap_start,
-                        gap_end,
+                        pd.Timestamp(gap_start_day),
+                        pd.Timestamp(gap_end_day),
                         gap_days,
                         avg_daily,
                         avg_daily * gap_days,
                         False,
                     ]
                 )
-        active_gap = (max_date - dates[-1]).days
+        active_gap = int((max_day - date_days[-1]) / np.timedelta64(1, "D"))
         if active_gap >= 3:
-            gap_start = dates[-1] + pd.Timedelta(days=1)
-            gap_end = max_date
-            before = group[(group["transaction_date"] >= gap_start - pd.Timedelta(days=14)) & (group["transaction_date"] < gap_start)]
-            avg_daily = before["gmv"].sum() / 14 if not before.empty else 0
+            gap_start_day = date_days[-1] + np.timedelta64(1, "D")
+            avg_daily = prior_14_day_average(gap_start_day)
             rows.append(
                 [
                     store_id,
@@ -458,8 +464,8 @@ def stock_gaps(dfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
                     meta["category"],
                     meta["vendor_id"],
                     meta["vendor_name"] if pd.notna(meta["vendor_name"]) else "SIN_VENDOR",
-                    gap_start,
-                    gap_end,
+                    pd.Timestamp(gap_start_day),
+                    pd.Timestamp(max_day),
                     active_gap,
                     avg_daily,
                     avg_daily * active_gap,
@@ -1378,6 +1384,22 @@ def write_analysis_html(
     ttest_tx = ab["ttest_tx"]
     ttest_ticket = ab["ttest_ticket"]
     change = ab["ttest_change"]
+    week_table_cols = ["week_start", "format", "net_gmv", "wow_abs", "wow_pct"]
+    week_table_names = {
+        "week_start": "semana",
+        "format": "formato",
+        "net_gmv": "ventas_netas",
+        "wow_abs": "cambio_semana_anterior",
+        "wow_pct": "cambio_porcentual",
+    }
+
+    def weekly_table(df: pd.DataFrame) -> str:
+        out = df[week_table_cols].copy()
+        out[["net_gmv", "wow_abs", "wow_pct"]] = out[["net_gmv", "wow_abs", "wow_pct"]].round(2)
+        return out.rename(columns=week_table_names).to_html(index=False)
+
+    top_peaks_table = weekly_table(top_peaks)
+    top_drops_table = weekly_table(top_drops)
 
     sections = f"""
 <!doctype html>
@@ -1418,9 +1440,9 @@ def write_analysis_html(
   <h3>1. Estacionalidad por formato</h3>
   <img src="bloque3_visualizaciones/gmv_semanal_formato.svg" alt="Ventas netas semanales por formato">
   <p>El formato mas sensible es <b>{cv.iloc[0]['format']}</b>, con coeficiente de variacion {cv.iloc[0]['cv']:.2f}. Los picos principales se concentran alrededor de semanas comerciales fuertes; las caidas grandes se explican por cierres de ciclo/promocion o semanas posteriores a picos.</p>
-  {top_peaks[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).rename(columns={'week_start': 'semana', 'format': 'formato', 'net_gmv': 'ventas_netas', 'wow_abs': 'cambio_semana_anterior', 'wow_pct': 'cambio_porcentual'}).to_html(index=False)}
+  {top_peaks_table}
   <p><b>Caidas mas significativas:</b></p>
-  {top_drops[['week_start','format','net_gmv','wow_abs','wow_pct']].round(2).rename(columns={'week_start': 'semana', 'format': 'formato', 'net_gmv': 'ventas_netas', 'wow_abs': 'cambio_semana_anterior', 'wow_pct': 'cambio_porcentual'}).to_html(index=False)}
+  {top_drops_table}
   <p><b>Hipotesis de picos:</b> 2024-12-02 en HIPERMERCADO se asocia a temporada navidena y compras de alto valor; 2024-07-01 en SUPERMERCADO puede venir de pago de medio ano y abastecimiento de inicio de semestre; 2025-05-05 en SUPERMERCADO coincide con una semana comercial fuerte previa a Dia de la Madre en la region.</p>
   <p><b>Hipotesis de caidas:</b> 2024-12-30 cae por compras adelantadas de Navidad y menor trafico posterior; la caida de HIPERMERCADO en esa misma semana sugiere normalizacion despues de promociones; 2024-07-29 en HIPERMERCADO parece cierre de ciclo despues del pico de julio.</p>
 
@@ -1443,7 +1465,7 @@ def write_analysis_html(
 
   <h2>Parte B - Interpretacion de Prueba A/B</h2>
   <img src="bloque3_visualizaciones/ab_test_gmv_promedio.svg" alt="Prueba A/B de ventas promedio">
-  <p>Validacion: hay dos tiendas asignadas a ambos grupos ({', '.join(ab['ambiguous'])}), excluidas de la prueba primaria. Los grupos limpios no son perfectamente comparables: CONTROL tenia ventas semanales base de {money2(ab['pre_summary'].loc['CONTROL', 'avg_weekly_gmv'])} contra {money2(ab['pre_summary'].loc['TREATMENT', 'avg_weekly_gmv'])} en TREATMENT, tamano promedio de {ab['size_summary'].loc['CONTROL', 'mean']:.1f} vs {ab['size_summary'].loc['TREATMENT', 'mean']:.1f} metros cuadrados, y mas hipermercados/supermercados.</p>
+  <p>Validacion: hay dos tiendas asignadas a ambos grupos ({', '.join(ab['ambiguous'])}), excluidas de la prueba primaria. Los grupos limpios no son perfectamente comparables: CONTROL tenia ventas semanales base de {money2(ab['pre_summary'].loc['CONTROL', 'avg_weekly_gmv'])} contra {money2(ab['pre_summary'].loc['TREATMENT', 'avg_weekly_gmv'])} en TREATMENT, tamano promedio de {ab['size_summary'].loc['CONTROL', 'mean']:,.1f} vs {ab['size_summary'].loc['TREATMENT', 'mean']:,.1f} metros cuadrados, y mas hipermercados/supermercados.</p>
   <p>Resultado principal de ventas semanales promedio por tienda: diferencia TREATMENT - CONTROL = <b>{money2(ttest['diff'])}</b>, incremento relativo {ttest['lift_pct']:.1f}%, valor p {ttest['p_value']:.3f}, IC95% [{money2(ttest['ci_low'])}, {money2(ttest['ci_high'])}]. No es estadisticamente significativo y el signo es negativo en comparacion directa.</p>
   <p>Ticket y frecuencia: TREATMENT tuvo {ttest_tx['treatment_mean']:.1f} transacciones semanales promedio contra {ttest_tx['control_mean']:.1f} en CONTROL; diferencia {ttest_tx['diff']:.1f}, valor p {ttest_tx['p_value']:.3f}. El ticket promedio tambien fue menor: {money2(ttest_ticket['treatment_mean'])} contra {money2(ttest_ticket['control_mean'])}; diferencia {money2(ttest_ticket['diff'])}, valor p {ttest_ticket['p_value']:.3f}. Por eso el resultado directo no viene de tickets mas altos ni de mayor frecuencia.</p>
   <p>Sin embargo, contra su propia linea base, TREATMENT mejora mientras CONTROL cae: diferencia-en-diferencias aproximada = {money2(change['diff'])}, valor p {change['p_value']:.3f}. Esto sugiere que el diseno necesita una repeticion con balance por formato/tamano antes de escalar.</p>
@@ -1487,7 +1509,7 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
         ]
         .to_dict("records"),
     }
-    default_start = (tx["transaction_date"].max() - pd.Timedelta(days=6)).strftime("%Y-%m-%d")
+    default_start = tx["transaction_date"].min().strftime("%Y-%m-%d")
     default_end = tx["transaction_date"].max().strftime("%Y-%m-%d")
     html = f"""<!doctype html>
 <html lang="es">
@@ -1551,7 +1573,7 @@ def write_dashboard(dfs: dict[str, pd.DataFrame], retention: pd.DataFrame, prod:
     <details class="logic">
       <summary>Explicacion tecnica y consulta base</summary>
       <p>Los indicadores usan ventas netas: una venta completada suma y una devolucion resta. El ticket promedio divide ventas netas entre transacciones. Las ventas netas por metro cuadrado dividen las ventas netas entre el tamano de las tiendas incluidas por los filtros.</p>
-	      <pre><code>WITH parametros AS (
+      <pre><code>WITH parametros AS (
   SELECT DATE('{default_start}') AS fecha_inicial, DATE('{default_end}') AS fecha_final
 ),
 ventas_por_tienda AS (
@@ -1581,7 +1603,7 @@ FROM ventas_por_tienda;</code></pre>
         <details class="logic">
           <summary>Explicacion tecnica y consulta usada</summary>
           <p>La grafica agrupa las ventas netas por semana y por formato. La logica tecnica convierte cada transaccion a venta neta, une la tienda para obtener el formato y agrega por inicio de semana.</p>
-	          <pre><code>SELECT
+          <pre><code>SELECT
   DATE(t.transaction_date, '-' || ((CAST(strftime('%w', t.transaction_date) AS INTEGER) + 6) % 7) || ' days') AS semana,
   s.format AS formato,
   SUM(CASE WHEN t.status = 'RETURNED' THEN -t.total_amount ELSE t.total_amount END) AS ventas_netas
@@ -1856,39 +1878,21 @@ update();
 </script>
 </body>
 </html>"""
-    (ROOT / "bloque5_dashboard.html").write_text(html, encoding="utf-8")
+    (ROOT / "bloque5_dashboard.html").write_text(html.rstrip() + "\n", encoding="utf-8")
 
 
-def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd.DataFrame, gaps: pd.DataFrame, gmroi_df: pd.DataFrame, retention: pd.DataFrame) -> None:
+def write_presentation(
+    ab: dict[str, object],
+    comp_store: pd.DataFrame,
+    prod: pd.DataFrame,
+    gaps: pd.DataFrame,
+    gmroi_df: pd.DataFrame,
+    retention: pd.DataFrame,
+    pareto: pd.DataFrame,
+) -> None:
     pdf = ROOT / "bloque5_presentacion_EN.pdf"
     c = canvas.Canvas(str(pdf), pagesize=landscape(letter))
     w, h = landscape(letter)
-
-    def slide(title: str, bullets: list[str], footer: str = ""):
-        c.setFillColor(colors.HexColor("#fbfaf7"))
-        c.rect(0, 0, w, h, fill=1, stroke=0)
-        c.setFillColor(colors.HexColor("#176B87"))
-        c.rect(0, h - 0.18 * inch, w, 0.18 * inch, fill=1, stroke=0)
-        c.setFillColor(colors.HexColor("#1f2933"))
-        c.setFont("Helvetica-Bold", 28)
-        c.drawString(0.65 * inch, h - 0.75 * inch, title)
-        c.setFont("Helvetica", 17)
-        y = h - 1.45 * inch
-        for b in bullets:
-            c.setFillColor(colors.HexColor("#D97941"))
-            c.circle(0.82 * inch, y + 0.07 * inch, 4, fill=1, stroke=0)
-            c.setFillColor(colors.HexColor("#1f2933"))
-            text = c.beginText(1.05 * inch, y)
-            text.setFont("Helvetica", 16)
-            for line in wrap_text(b, 88):
-                text.textLine(line)
-            c.drawText(text)
-            y -= 0.72 * inch
-        if footer:
-            c.setFont("Helvetica", 10)
-            c.setFillColor(colors.HexColor("#667085"))
-            c.drawString(0.65 * inch, 0.45 * inch, footer)
-        c.showPage()
 
     best = comp_store.sort_values("growth_pct", ascending=False).iloc[0]
     worst = comp_store.sort_values("growth_pct").iloc[0]
@@ -1897,49 +1901,377 @@ def write_presentation(ab: dict[str, object], comp_store: pd.DataFrame, prod: pd
     low_gmroi = int((gmroi_df["gmroi"] < 1).sum())
     m1_large = retention.loc[retention.index <= pd.Timestamp("2024-03-01"), 1].dropna().mean()
     t = ab["ttest_gmv"]
+    t_tx = ab["ttest_tx"]
+    t_ticket = ab["ttest_ticket"]
     change = ab["ttest_change"]
+    pre_summary = ab["pre_summary"]
+    test_summary = ab["test_summary"]
+    size_summary = ab["size_summary"]
+    category_sales = pareto.groupby("category")["net_line_gmv"].sum().sort_values(ascending=False)
+    electronics_share = category_sales.get("Electrónica", 0) / category_sales.sum() * 100
+    category_loss = gaps.groupby("category")["estimated_lost_gmv"].sum().sort_values(ascending=False)
+    active_gap_count = int(gaps["active_gap"].sum())
+    low_by_format = prod[prod["performance_flag"] == "BAJO_RENDIMIENTO"].groupby("format").size().sort_values(ascending=False)
+    worst_gmroi = gmroi_df.sort_values("gmroi").head(5)
+    format_perf = (
+        comp_store.groupby("format")[["current", "previous"]]
+        .sum()
+        .assign(growth=lambda d: (d["current"] / d["previous"] - 1) * 100)
+        .sort_values("growth", ascending=False)
+    )
+    country_perf = (
+        comp_store.groupby("country")[["current", "previous"]]
+        .sum()
+        .assign(growth=lambda d: (d["current"] / d["previous"] - 1) * 100)
+        .sort_values("growth", ascending=False)
+    )
 
-    slide(
+    ink = colors.HexColor("#1f2933")
+    muted = colors.HexColor("#667085")
+    paper = colors.HexColor("#fbfaf7")
+    line = colors.HexColor("#ded8cf")
+    teal = colors.HexColor("#176B87")
+    green = colors.HexColor("#3E8E7E")
+    orange = colors.HexColor("#D97941")
+    red = colors.HexColor("#C04B37")
+    purple = colors.HexColor("#7B4B94")
+    page_no = 0
+
+    def draw_wrapped(text: str, x: float, y: float, max_width: float, size: float = 9.5, font: str = "Helvetica", color=ink, leading: float | None = None) -> float:
+        c.setFont(font, size)
+        c.setFillColor(color)
+        leading = leading or size + 2.5
+        words = str(text).split()
+        lines: list[str] = []
+        current: list[str] = []
+        for word in words:
+            candidate = " ".join(current + [word])
+            if current and c.stringWidth(candidate, font, size) > max_width:
+                lines.append(" ".join(current))
+                current = [word]
+            else:
+                current.append(word)
+        if current:
+            lines.append(" ".join(current))
+        for line in lines:
+            c.drawString(x, y, line)
+            y -= leading
+        return y
+
+    def start_slide(section: str, title: str, subtitle: str) -> None:
+        nonlocal page_no
+        page_no += 1
+        c.setFillColor(paper)
+        c.rect(0, 0, w, h, fill=1, stroke=0)
+        c.setFillColor(teal)
+        c.rect(0, h - 0.16 * inch, w, 0.16 * inch, fill=1, stroke=0)
+        c.setFillColor(teal)
+        c.rect(0, 0, 0.18 * inch, h, fill=1, stroke=0)
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(0.55 * inch, h - 0.47 * inch, section.upper())
+        title_bottom = draw_wrapped(title, 0.55 * inch, h - 0.82 * inch, 9.5 * inch, size=21, font="Helvetica-Bold", color=ink, leading=24)
+        subtitle_y = min(h - 1.12 * inch, title_bottom - 0.03 * inch)
+        subtitle_bottom = draw_wrapped(subtitle, 0.55 * inch, subtitle_y, 9.6 * inch, size=9.5, color=muted)
+        c.setStrokeColor(line)
+        rule_y = min(h - 1.32 * inch, subtitle_bottom - 0.04 * inch)
+        c.line(0.55 * inch, rule_y, 10.45 * inch, rule_y)
+        c.setFont("Helvetica", 7.5)
+        c.setFillColor(muted)
+        c.drawString(0.55 * inch, 0.28 * inch, "Retail Multi-format | Jan 2024 to Jun 2025 | Synthetic dataset")
+        c.drawRightString(10.45 * inch, 0.28 * inch, f"{page_no}/5")
+
+    def end_slide() -> None:
+        c.showPage()
+
+    def card(x: float, y: float, width: float, height: float, label: str, value: str, note: str, accent=teal) -> None:
+        c.setFillColor(colors.white)
+        c.setStrokeColor(line)
+        c.roundRect(x, y, width, height, 7, fill=1, stroke=1)
+        c.setFillColor(accent)
+        c.roundRect(x, y + height - 0.08 * inch, width, 0.08 * inch, 4, fill=1, stroke=0)
+        c.setFillColor(muted)
+        c.setFont("Helvetica-Bold", 7.5)
+        c.drawString(x + 0.12 * inch, y + height - 0.28 * inch, label.upper())
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold", 17)
+        c.drawString(x + 0.12 * inch, y + height - 0.58 * inch, value)
+        draw_wrapped(note, x + 0.12 * inch, y + 0.22 * inch, width - 0.24 * inch, size=7.5, color=muted, leading=9)
+
+    def panel(x: float, y: float, width: float, height: float, title: str, accent=teal) -> None:
+        c.setFillColor(colors.white)
+        c.setStrokeColor(line)
+        c.roundRect(x, y, width, height, 8, fill=1, stroke=1)
+        c.setFillColor(accent)
+        c.roundRect(x, y + height - 0.11 * inch, width, 0.11 * inch, 5, fill=1, stroke=0)
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(x + 0.16 * inch, y + height - 0.34 * inch, title)
+
+    def bullet_list(items: list[str], x: float, y: float, width: float, color=orange, size: float = 9.4) -> float:
+        for item in items:
+            c.setFillColor(color)
+            c.circle(x, y + 0.04 * inch, 2.3, fill=1, stroke=0)
+            y = draw_wrapped(item, x + 0.12 * inch, y, width - 0.12 * inch, size=size, color=ink, leading=size + 3)
+            y -= 0.07 * inch
+        return y
+
+    def hbar_chart(
+        rows: list[tuple[str, float]],
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+        title: str,
+        positive_negative: bool = False,
+        value_formatter=money,
+    ) -> None:
+        panel(x, y, width, height, title, teal)
+        plot_x = x + 0.22 * inch
+        plot_y = y + height - 0.72 * inch
+        plot_w = width - 0.45 * inch
+        row_h = min(0.32 * inch, (height - 0.95 * inch) / max(len(rows), 1))
+        values = [v for _, v in rows]
+        if positive_negative:
+            max_abs = max(max(abs(v) for v in values), 1)
+            zero_x = plot_x + plot_w * 0.48
+            c.setStrokeColor(line)
+            c.line(zero_x, y + 0.28 * inch, zero_x, y + height - 0.78 * inch)
+            scale = plot_w * 0.44 / max_abs
+            for idx, (label, value) in enumerate(rows):
+                yy = plot_y - idx * row_h
+                bar_w = abs(value) * scale
+                c.setFillColor(green if value >= 0 else red)
+                c.rect(zero_x if value >= 0 else zero_x - bar_w, yy - 0.09 * inch, bar_w, 0.14 * inch, fill=1, stroke=0)
+                c.setFillColor(ink)
+                c.setFont("Helvetica-Bold", 7.5)
+                c.drawRightString(zero_x - 0.08 * inch, yy - 0.04 * inch, label)
+                c.drawString(zero_x + (bar_w if value >= 0 else -bar_w) + (0.05 * inch if value >= 0 else -0.36 * inch), yy - 0.04 * inch, f"{value:.1f}%")
+        else:
+            max_value = max(max(values), 1)
+            for idx, (label, value) in enumerate(rows):
+                yy = plot_y - idx * row_h
+                c.setFillColor(muted)
+                c.setFont("Helvetica-Bold", 7.5)
+                c.drawString(plot_x, yy - 0.04 * inch, label)
+                c.setFillColor(orange if idx == 0 else teal)
+                c.rect(plot_x + 1.45 * inch, yy - 0.09 * inch, (plot_w - 2.0 * inch) * value / max_value, 0.14 * inch, fill=1, stroke=0)
+                c.setFillColor(ink)
+                c.drawRightString(plot_x + plot_w, yy - 0.04 * inch, value_formatter(value))
+
+    def category_label(value: str) -> str:
+        return {
+            "Electrónica": "Electronics",
+            "Hogar": "Home",
+            "Ropa": "Apparel",
+            "Alimentos": "Food",
+            "Juguetes": "Toys",
+            "Bebidas": "Beverages",
+            "Cuidado Personal": "Personal Care",
+            "Limpieza": "Cleaning",
+        }.get(value, value)
+
+    def simple_table(rows: list[list[str]], headers: list[str], x: float, y: float, width: float, row_h: float = 0.26 * inch, font_size: float = 7.6) -> None:
+        col_w = width / len(headers)
+        c.setFillColor(colors.HexColor("#f2efe8"))
+        c.rect(x, y, width, row_h, fill=1, stroke=0)
+        c.setFillColor(muted)
+        c.setFont("Helvetica-Bold", font_size)
+        for i, header in enumerate(headers):
+            c.drawString(x + i * col_w + 0.05 * inch, y + 0.08 * inch, header)
+        yy = y - row_h
+        for r, row in enumerate(rows):
+            c.setFillColor(colors.white if r % 2 == 0 else colors.HexColor("#fbfaf7"))
+            c.rect(x, yy, width, row_h, fill=1, stroke=0)
+            c.setFillColor(ink)
+            c.setFont("Helvetica", font_size)
+            for i, cell in enumerate(row):
+                c.drawString(x + i * col_w + 0.05 * inch, yy + 0.08 * inch, str(cell)[:26])
+            yy -= row_h
+
+    start_slide(
         "1. Executive Summary",
-        [
-            f"Net sales are concentrated: Electronics is the main category and drives more than half of total sales.",
-            f"Stock gap signals show {money(lost_total)} estimated lost sales. This is the largest operational risk.",
-            f"The A/B test is not ready for rollout: p-value is {t['p_value']:.3f} and two stores had both variants.",
-        ],
+        "The operating story is clear: fix availability and low-productivity stores first; do not scale the display test yet.",
+        "Five metrics carry the decision. The test signal is not strong enough, while productivity and availability risks are already material.",
     )
-    slide(
+    draw_wrapped(
+        "Recommendation: pause full rollout, run a balanced second test, and launch daily operating controls for stock gaps and store productivity.",
+        0.65 * inch,
+        5.72 * inch,
+        4.75 * inch,
+        size=16,
+        font="Helvetica-Bold",
+        color=ink,
+        leading=20,
+    )
+    bullet_list(
+        [
+            f"Electronics represents {electronics_share:.1f}% of net item sales, so small product issues move the full region.",
+            f"Sales gap signals add up to {money(lost_total)} estimated lost sales; the top category is {category_label(category_loss.index[0])}.",
+            f"A/B direct result is negative ({t['lift_pct']:.1f}% lift, p-value {t['p_value']:.3f}); design balance is weak.",
+        ],
+        0.72 * inch,
+        4.45 * inch,
+        4.5 * inch,
+    )
+    card(5.55 * inch, 4.68 * inch, 1.55 * inch, 1.0 * inch, "Net sales", money(category_sales.sum()), "Item-level sales used for category mix.", teal)
+    card(7.25 * inch, 4.68 * inch, 1.55 * inch, 1.0 * inch, "Electronics", f"{electronics_share:.1f}%", "Share of net item sales.", orange)
+    card(8.95 * inch, 4.68 * inch, 1.55 * inch, 1.0 * inch, "Lost sales", money(lost_total), "Estimated from sales gaps.", red)
+    card(5.55 * inch, 3.28 * inch, 1.55 * inch, 1.0 * inch, "Low stores", str(low_stores), "Below 25th percentile.", purple)
+    card(7.25 * inch, 3.28 * inch, 1.55 * inch, 1.0 * inch, "A/B p-value", f"{t['p_value']:.3f}", "Direct sales test.", red)
+    card(8.95 * inch, 3.28 * inch, 1.55 * inch, 1.0 * inch, "Ambiguous", str(len(ab["ambiguous"])), "Stores in both variants.", orange)
+    panel(5.55 * inch, 1.08 * inch, 4.95 * inch, 1.75 * inch, "Decision logic", green)
+    bullet_list(
+        [
+            "Scale only after a clean experiment by format and store size.",
+            "Use productivity alerts every week for the bottom 10 stores.",
+            "Start daily stock-gap monitoring with the top 20 Electronics products.",
+        ],
+        5.78 * inch,
+        2.35 * inch,
+        4.5 * inch,
+        color=green,
+        size=8.6,
+    )
+    end_slide()
+
+    start_slide(
         "2. Store Performance",
-        [
-            f"Best comparable store: {best['store_id']} with {best['growth_pct']:.1f}% growth.",
-            f"Weakest comparable store: {worst['store_id']} with {worst['growth_pct']:.1f}% growth.",
-            f"{low_stores} stores are below the 25th percentile of net sales per square meter inside their format.",
-        ],
+        "Comparable sales show where formats and stores are moving, but productivity varies sharply inside each format.",
+        "The view below separates growth from efficiency so regional actions can be assigned by store.",
     )
-    slide(
+    hbar_chart([(idx, row["growth"]) for idx, row in format_perf.iterrows()], 0.6 * inch, 3.65 * inch, 4.85 * inch, 2.4 * inch, "Comparable sales growth by format", True)
+    hbar_chart([(idx, row["growth"]) for idx, row in country_perf.iterrows()], 0.6 * inch, 1.0 * inch, 4.85 * inch, 2.15 * inch, "Comparable sales growth by country", True)
+    top_rows = [
+        [r.store_id, r.format, f"{r.growth_pct:.1f}%", money(r.current)]
+        for r in comp_store.sort_values("growth_pct", ascending=False).head(4).itertuples()
+    ]
+    bottom_rows = [
+        [r.store_id, r.format, f"{r.growth_pct:.1f}%", money(r.current)]
+        for r in comp_store.sort_values("growth_pct").head(4).itertuples()
+    ]
+    panel(5.75 * inch, 3.65 * inch, 4.75 * inch, 2.4 * inch, "Best comparable stores", green)
+    simple_table(top_rows, ["Store", "Format", "Growth", "Current"], 5.92 * inch, 5.3 * inch, 4.4 * inch)
+    panel(5.75 * inch, 1.0 * inch, 4.75 * inch, 2.15 * inch, "Worst comparable stores", red)
+    simple_table(bottom_rows, ["Store", "Format", "Growth", "Current"], 5.92 * inch, 2.55 * inch, 4.4 * inch)
+    end_slide()
+
+    start_slide(
         "3. Opportunities",
-        [
-            f"Fix low productivity stores first. Focus on the bottom {low_stores} stores with a weekly action plan.",
-            f"{low_gmroi} vendor-category combinations have gross margin return on investment below 1. They cost more than the gross margin they create.",
-            f"Loyalty month-one retention in the large early cohorts is {m1_large:.1f}%. The biggest drop happens after the first purchase.",
-        ],
+        "The improvement pool is practical: ten low-productivity stores, low margin-return vendors, and loyalty retention after first purchase.",
+        "These actions can start without waiting for a new platform or extra tooling.",
     )
-    slide(
+    card(0.65 * inch, 4.85 * inch, 2.15 * inch, 0.95 * inch, "Productivity", f"{low_stores} stores", "Below 25th percentile inside format.", teal)
+    card(3.0 * inch, 4.85 * inch, 2.15 * inch, 0.95 * inch, "Margin return", str(low_gmroi), "Vendor-category combos below 1.", red)
+    card(5.35 * inch, 4.85 * inch, 2.15 * inch, 0.95 * inch, "Month 1 retention", f"{m1_large:.1f}%", "Large early loyalty cohorts.", purple)
+    card(7.7 * inch, 4.85 * inch, 2.15 * inch, 0.95 * inch, "Active gaps", f"{active_gap_count:,}", "Open store-product signals.", orange)
+    hbar_chart(
+        [(idx, float(v)) for idx, v in low_by_format.items()],
+        0.65 * inch,
+        2.0 * inch,
+        4.55 * inch,
+        2.35 * inch,
+        "Low-productivity stores by format",
+        value_formatter=lambda value: f"{int(value)}",
+    )
+    panel(5.55 * inch, 2.0 * inch, 4.95 * inch, 2.35 * inch, "Lowest margin-return vendor/category pairs", red)
+    gmroi_rows = [
+        [r.vendor_id, category_label(r.category), f"{r.gmroi:.2f}", money(r.gross_margin)]
+        for r in worst_gmroi.itertuples()
+    ]
+    simple_table(gmroi_rows, ["Vendor", "Category", "Return", "Margin"], 5.72 * inch, 3.65 * inch, 4.6 * inch, row_h=0.24 * inch)
+    panel(0.65 * inch, 0.82 * inch, 9.85 * inch, 0.75 * inch, "Management implication", green)
+    draw_wrapped(
+        "Weekly productivity routines should start with the bottom 10 stores; vendor reviews should focus on return below 1; loyalty should trigger a second purchase before month one drops.",
+        0.85 * inch,
+        1.15 * inch,
+        9.35 * inch,
+        size=8.8,
+        color=ink,
+    )
+    end_slide()
+
+    start_slide(
         "4. Risks",
-        [
-            "Data quality risk: 1,745 transactions do not match item totals. Use transaction total for store sales.",
-            "Experiment risk: Treatment stores are smaller before the test. The groups are not fully balanced.",
-            "Stock risk: top categories with sales gaps can erase millions in sales if supply is not corrected.",
-        ],
+        "The analysis is usable, but the business should act with clear risk controls: data quality, experiment balance, and stock-gap interpretation.",
+        "Each risk has a measurable control that can be checked before a VP-level rollout decision.",
     )
-    slide(
+    card(0.65 * inch, 4.92 * inch, 1.85 * inch, 0.88 * inch, "Data mismatch", "1,745", "Transactions differ from item totals.", orange)
+    card(2.7 * inch, 4.92 * inch, 1.85 * inch, 0.88 * inch, "Missing vendor", "5", "Products point to unknown vendor.", red)
+    card(4.75 * inch, 4.92 * inch, 1.85 * inch, 0.88 * inch, "A/B conflict", "2", "Stores in both variants.", red)
+    card(6.8 * inch, 4.92 * inch, 1.85 * inch, 0.88 * inch, "Price issue", "231", "Items at zero price without promo.", purple)
+    hbar_chart([(category_label(idx), float(v)) for idx, v in category_loss.head(5).items()], 0.65 * inch, 1.2 * inch, 4.95 * inch, 3.2 * inch, "Estimated lost sales by category")
+    panel(5.85 * inch, 1.2 * inch, 4.65 * inch, 3.2 * inch, "Experiment balance check", red)
+    exp_rows = [
+        ["Pre sales", money2(pre_summary.loc["CONTROL", "avg_weekly_gmv"]), money2(pre_summary.loc["TREATMENT", "avg_weekly_gmv"])],
+        ["Test sales", money2(test_summary.loc["CONTROL", "avg_weekly_gmv"]), money2(test_summary.loc["TREATMENT", "avg_weekly_gmv"])],
+        ["Transactions", f"{test_summary.loc['CONTROL', 'avg_weekly_tx']:.1f}", f"{test_summary.loc['TREATMENT', 'avg_weekly_tx']:.1f}"],
+        ["Ticket", money2(test_summary.loc["CONTROL", "avg_ticket"]), money2(test_summary.loc["TREATMENT", "avg_ticket"])],
+        ["Store size", f"{size_summary.loc['CONTROL', 'mean']:.0f}", f"{size_summary.loc['TREATMENT', 'mean']:.0f}"],
+    ]
+    simple_table(exp_rows, ["Metric", "Control", "Treatment"], 6.03 * inch, 3.82 * inch, 4.3 * inch, row_h=0.28 * inch)
+    draw_wrapped(
+        f"Direct sales difference is {money2(t['diff'])}, p-value {t['p_value']:.3f}. Difference-in-differences is {money2(change['diff'])}, p-value {change['p_value']:.3f}, so I would repeat the test with a balanced design.",
+        6.05 * inch,
+        1.78 * inch,
+        4.25 * inch,
+        size=8.2,
+        color=ink,
+    )
+    end_slide()
+
+    start_slide(
         "5. Recommendations",
-        [
-            "Do not roll out the new display to all stores yet. Run a second balanced test by format and size.",
-            f"Create a daily stock alert for the top 20 Electronics products. Owner: Supply Chain. Start in 30 days.",
-            f"Launch a 90-day productivity sprint for stores below the 25th percentile of net sales per square meter. Owner: Regional Operations.",
-        ],
-        "Simple English version for VP Operations review.",
+        "The next plan is a controlled operating rollout, not a dashboard-only handoff.",
+        "Each action includes owner, timing, and the number that proves whether it worked.",
     )
+    timeline = [
+        (
+            "30 days",
+            orange,
+            [
+                "Operations: action plan for the bottom 10 productivity stores.",
+                "Supply Chain: daily alert for top 20 Electronics products.",
+                "Data: fix 5 missing vendor links and zero-price exceptions.",
+            ],
+        ),
+        (
+            "60 days",
+            teal,
+            [
+                "Merchandising: repeat A/B test by format and store size.",
+                "Target: p-value below 0.05 or positive profit after implementation cost.",
+                "Add inventory data to confirm real stock-outs.",
+            ],
+        ),
+        (
+            "90 days",
+            green,
+            [
+                "Regional Operations: certify productivity score every week.",
+                "Data team: publish metric owner and reconciliation rules.",
+                "VP review: scale only stores/categories that clear the decision gate.",
+            ],
+        ),
+    ]
+    x = 0.65 * inch
+    for label, accent, items in timeline:
+        panel(x, 1.55 * inch, 3.05 * inch, 4.5 * inch, label, accent)
+        bullet_list(items, x + 0.22 * inch, 5.18 * inch, 2.6 * inch, color=accent, size=8.6)
+        x += 3.32 * inch
+    c.setFillColor(colors.white)
+    c.setStrokeColor(line)
+    c.roundRect(0.65 * inch, 0.7 * inch, 9.7 * inch, 0.55 * inch, 8, fill=1, stroke=1)
+    draw_wrapped(
+        f"Final call: do not scale the display now. Run the balanced test, reduce the {money(lost_total)} sales-gap risk, and move the bottom {low_stores} stores above their format threshold.",
+        0.85 * inch,
+        1.02 * inch,
+        9.25 * inch,
+        size=9.2,
+        font="Helvetica-Bold",
+        color=ink,
+    )
+    end_slide()
     c.save()
 
 
@@ -2096,7 +2428,10 @@ Validacion y criterio aplicado manualmente:
 
 def write_support_files() -> None:
     (ROOT / "requirements.txt").write_text("pandas>=2.0\nnumpy>=1.24\nreportlab>=4.0\n", encoding="utf-8")
-    (ROOT / ".gitignore").write_text(".DS_Store\n__pycache__/\n.venv/\n*.pyc\n*.db\n*.sqlite\n*.sqlite3\n", encoding="utf-8")
+    (ROOT / ".gitignore").write_text(
+        ".DS_Store\n__pycache__/\n.venv/\n*.pyc\n*.db\n*.sqlite\n*.sqlite3\n*.db-*\n*.sqlite-*\n*.sqlite3-*\n",
+        encoding="utf-8",
+    )
     (ROOT / ".vscode" / "tasks.json").write_text(
         json.dumps(
             {
@@ -2139,7 +2474,7 @@ def main() -> None:
     write_kpi_framework()
     write_analysis_html(comp_store, comp_country, prod, retention, ticket, gmroi_df, promo, weekly, cv, pareto, gaps, ab)
     write_dashboard(dfs, retention, prod, gaps)
-    write_presentation(ab, comp_store, prod, gaps, gmroi_df, retention)
+    write_presentation(ab, comp_store, prod, gaps, gmroi_df, retention, pareto)
     write_readme(dfs)
     write_support_files()
     print("Entregables generados en", ROOT)
