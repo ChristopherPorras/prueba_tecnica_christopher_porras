@@ -2066,6 +2066,7 @@ Si aparecen mensajes como `Incorrect syntax near 'LIMIT'` con `owner: mssql`, no
 | `bloque4_kpi_framework.md` | Framework de indicadores y metrica principal |
 | `bloque5_dashboard.html` | Dashboard operativo regional interactivo con selector de todas las tiendas o una tienda específica |
 | `bloque5_presentacion_EN.pdf` | Presentacion ejecutiva en ingles |
+| `informe_prueba_tecnica_christopher_porras.docx` | Informe Word completo con saludo inicial, ejecución, referencias y conclusiones por requerimiento |
 | `apoyo_exposicion_tecnica.html` | Apoyo para explicar la solucion durante la entrevista |
 | `GUIA_SQLITE_VSC.md` | Guia practica para SQLite en VS Code |
 
