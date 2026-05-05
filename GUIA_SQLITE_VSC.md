@@ -46,13 +46,43 @@ Vistas utiles:
 
 ## 3. Usarlo desde terminal
 
-Como ya tienes `sqlite-utils`, puedes consultar asi:
+Forma recomendada, sin depender de `sqlite-utils`:
+
+```bash
+python scripts/query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
+python scripts/query_sqlite.py "SELECT ROUND(SUM(ventas_netas), 2) AS ventas_netas FROM v_transacciones_ventas_netas;"
+```
+
+En Windows, si `python` no responde:
+
+```powershell
+py scripts\query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
+py scripts\query_sqlite.py "SELECT ROUND(SUM(ventas_netas), 2) AS ventas_netas FROM v_transacciones_ventas_netas;"
+```
+
+Para una consulta de varias lineas en PowerShell:
+
+```powershell
+@"
+SELECT
+  s.format AS formato,
+  ROUND(SUM(v.ventas_netas), 2) AS ventas_netas
+FROM v_transacciones_ventas_netas v
+JOIN stores s ON s.store_id = v.store_id
+GROUP BY s.format
+ORDER BY ventas_netas DESC;
+"@ | py scripts\query_sqlite.py --stdin
+```
+
+Alternativa si `sqlite-utils` esta disponible en tu terminal:
 
 ```bash
 sqlite-utils tables data/retail_prueba_tecnica.sqlite
 sqlite-utils query data/retail_prueba_tecnica.sqlite "SELECT COUNT(*) AS transacciones FROM transactions;" --table
 sqlite-utils query data/retail_prueba_tecnica.sqlite "SELECT ROUND(SUM(ventas_netas), 2) AS ventas_netas FROM v_transacciones_ventas_netas;" --table
 ```
+
+Si PowerShell dice que `sqlite-utils` no se reconoce, no es problema de la base: significa que ese comando no esta en el PATH de Windows. Usa `py scripts\query_sqlite.py` para evitar ese bloqueo.
 
 ## 4. Consultas listas para exponer
 
@@ -66,7 +96,7 @@ Si tu extension de SQLite permite abrir archivos `.sql`, abre esos archivos y ej
 Si prefieres terminal, copia una consulta del archivo y ejecutala con:
 
 ```bash
-sqlite-utils query data/retail_prueba_tecnica.sqlite "PEGAR_CONSULTA_AQUI" --table
+python scripts/query_sqlite.py "PEGAR_CONSULTA_AQUI"
 ```
 
 ## 5. Criterio tecnico para usar SQLite

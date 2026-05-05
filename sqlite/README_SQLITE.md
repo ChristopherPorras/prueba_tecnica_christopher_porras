@@ -33,8 +33,15 @@ Opcion visual:
 Opcion terminal:
 
 ```bash
+python scripts/query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 sqlite-utils tables data/retail_prueba_tecnica.sqlite
 sqlite-utils query data/retail_prueba_tecnica.sqlite "SELECT COUNT(*) AS transacciones FROM transactions;" --table
+```
+
+En Windows, si `sqlite-utils` no se reconoce, usa:
+
+```powershell
+py scripts\query_sqlite.py "SELECT COUNT(*) AS transacciones FROM transactions;"
 ```
 
 ## Consultas preparadas
